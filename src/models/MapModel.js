@@ -5,16 +5,18 @@
 
 export default class MapModel {
     constructor() {
-        this.countries = []; // Array to store country data
+        this.countries = new Map(); // Map of country name -> country data with paths
         this.adjacencyMap = new Map(); // Map of country name -> adjacent countries
         this.continentMap = new Map(); // Map of country name -> continent
+        this.countriesList = []; // List of unique country names
+        this.validPairs = []; // List of valid country pairs for the game
         this.svgLoaded = false;
     }
 
     /**
-     * Loads SVG map data from the given URL
+     * Loads SVG map data and adjacency data
      * @param {string} svgUrl - URL to the SVG file
-     * @returns {Promise} - Resolves when SVG is loaded and processed
+     * @returns {Promise} - Resolves when data is loaded and processed
      */
     async loadMapData(svgUrl) {
         try {
@@ -34,43 +36,14 @@ export default class MapModel {
                 throw new Error("SVG parsing error");
             }
             
-            // Extract country paths
-            const paths = svgDoc.querySelectorAll('path');
+            // Extract and process country paths (handling multiple paths per country)
+            await this._processCountryPaths(svgDoc);
             
-            if (paths.length === 0) {
-                throw new Error("No paths found in SVG");
-            }
+            // Load adjacency data from JSON
+            await this._loadAdjacencyData();
             
-            // Process countries
-            this.countries = [];
-            
-            paths.forEach(path => {
-                // Get country information
-                const id = path.id || '';
-                const name = path.getAttribute('name') || id || 'Unknown';
-                const fill = path.getAttribute('fill') || '#ececec';
-                const pathData = path.getAttribute('d');
-                // Get continent from class name if available
-                const continent = path.getAttribute('class') || 'Unknown';
-                
-                if (pathData) {
-                    // Store country data
-                    this.countries.push({
-                        id,
-                        name,
-                        fill,
-                        path: pathData,
-                        selected: false,
-                        continent
-                    });
-                    
-                    // Store continent information
-                    this.continentMap.set(name, continent);
-                }
-            });
-            
-            // Build adjacency data
-            this._buildAdjacencyMap(svgDoc);
+            // Load valid country pairs from JSON
+            await this._loadCountryPairs();
             
             this.svgLoaded = true;
             return true;
@@ -81,152 +54,261 @@ export default class MapModel {
     }
     
     /**
-     * Builds a map of country adjacencies
+     * Processes all country paths from the SVG, handling multiple paths per country
      * @param {Document} svgDoc - The parsed SVG document
      * @private
      */
-    _buildAdjacencyMap(svgDoc) {
-        // Clear existing adjacency data
-        this.adjacencyMap.clear();
+    async _processCountryPaths(svgDoc) {
+        // Clear existing data
+        this.countries.clear();
+        this.continentMap.clear();
         
-        // Basic adjacency detection: 
-        // Two countries are adjacent if their paths share points
-        // This is a simplified approach - in a production app, this would be 
-        // pre-computed or use a more sophisticated algorithm for accuracy
+        // Extract country paths
+        const paths = svgDoc.querySelectorAll('path');
         
-        for (let i = 0; i < this.countries.length; i++) {
-            const country1 = this.countries[i];
-            if (!this.adjacencyMap.has(country1.name)) {
-                this.adjacencyMap.set(country1.name, new Set());
+        if (paths.length === 0) {
+            throw new Error("No paths found in SVG");
+        }
+        
+        // Process each path
+        paths.forEach(path => {
+            // Get country information
+            const id = path.id || '';
+            const name = path.getAttribute('name') || id || 'Unknown';
+            const fill = path.getAttribute('fill') || '#ececec';
+            const pathData = path.getAttribute('d');
+            // Get continent from class name if available
+            const continent = path.getAttribute('class') || 'Unknown';
+            
+            if (!pathData) return;
+            
+            // Check if we already have data for this country
+            if (this.countries.has(name)) {
+                // Add this path to the existing country
+                const country = this.countries.get(name);
+                country.paths.push(pathData);
+            } else {
+                // Create a new country entry
+                this.countries.set(name, {
+                    id,
+                    name,
+                    fill,
+                    paths: [pathData], // Array of path data strings
+                    selected: false,
+                    isStart: false,
+                    isEnd: false,
+                    continent
+                });
+                
+                // Store continent information
+                this.continentMap.set(name, continent);
+            }
+        });
+        
+        // Create a list of unique country names
+        this.countriesList = Array.from(this.countries.keys());
+        
+        console.log(`Processed ${this.countriesList.length} unique countries with ${paths.length} total paths`);
+    }
+    
+    /**
+     * Loads country adjacency data from JSON
+     * @private
+     */
+    async _loadAdjacencyData() {
+        try {
+            const response = await fetch('data/country_adjacency.json');
+            if (!response.ok) {
+                throw new Error(`Adjacency data fetch failed: ${response.status}`);
             }
             
-            for (let j = 0; j < this.countries.length; j++) {
-                if (i === j) continue;
+            const adjacencyData = await response.json();
+            
+            // Clear existing adjacency data
+            this.adjacencyMap.clear();
+            
+            // Process adjacency data
+            if (adjacencyData && adjacencyData.adjacency) {
+                Object.entries(adjacencyData.adjacency).forEach(([country, neighbors]) => {
+                    // Create a set of adjacent countries
+                    this.adjacencyMap.set(country, new Set(neighbors));
+                });
                 
-                const country2 = this.countries[j];
-                
-                // Simple adjacency check:
-                // In real implementation, we would do proper adjacency testing with geometry
-                // For now, we're simulating adjacency based on the SVG structure
-                // This would typically be pre-computed data or use better algorithms
-                
-                // Check if countries are likely adjacent based on SVG path data
-                // This is a naive approach - real implementation would be more accurate
-                if (this._areCountriesLikelyAdjacent(country1, country2)) {
-                    this.adjacencyMap.get(country1.name).add(country2.name);
-                }
+                console.log(`Loaded adjacency data for ${this.adjacencyMap.size} countries`);
             }
+        } catch (error) {
+            console.error("Error loading adjacency data:", error);
+            // Fall back to a simplified approach
+            this._generateFallbackAdjacency();
         }
     }
     
     /**
-     * Determines if two countries are likely adjacent based on SVG data
-     * This is a simplified simulation - real implementation would be more accurate
-     * @param {Object} country1 - First country object
-     * @param {Object} country2 - Second country object
-     * @returns {boolean} - True if countries are likely adjacent
+     * Generates fallback adjacency data if JSON loading fails
      * @private
      */
-    _areCountriesLikelyAdjacent(country1, country2) {
-        // In a real implementation, this would use proper geometry calculations
-        // For this prototype, we'll simulate adjacency with a heuristic
+    _generateFallbackAdjacency() {
+        console.warn("Using fallback adjacency generation");
         
-        // Check if countries are in the same continent
-        const sameContinent = country1.continent === country2.continent && 
-                             country1.continent !== 'Unknown';
-        
-        // For simplicity, we'll assume there's a small chance countries are adjacent
-        // if they're in the same continent
-        if (sameContinent) {
-            // Instead of a random value, we could use more deterministic properties of the paths
-            // like checking if the path bounding boxes touch each other
-            return Math.random() < 0.4; // 40% chance if same continent
+        this.countriesList.forEach(countryName => {
+            if (!this.adjacencyMap.has(countryName)) {
+                this.adjacencyMap.set(countryName, new Set());
+            }
+            
+            // Simple fallback: countries in the same continent might be adjacent
+            const continent = this.continentMap.get(countryName);
+            
+            this.countriesList.forEach(otherName => {
+                if (countryName === otherName) return;
+                
+                const otherContinent = this.continentMap.get(otherName);
+                
+                // Add some adjacencies for countries in the same continent
+                if (continent === otherContinent && continent !== 'Unknown') {
+                    // Add with some probability to avoid too many connections
+                    if (Math.random() < 0.2) {
+                        this.adjacencyMap.get(countryName).add(otherName);
+                    }
+                }
+            });
+        });
+    }
+    
+    /**
+     * Loads valid country pairs from JSON
+     * @private
+     */
+    async _loadCountryPairs() {
+        try {
+            const response = await fetch('data/country_pairs.json');
+            if (!response.ok) {
+                throw new Error(`Country pairs fetch failed: ${response.status}`);
+            }
+            
+            const pairsData = await response.json();
+            
+            if (pairsData && pairsData.validPairs) {
+                this.validPairs = pairsData.validPairs;
+                console.log(`Loaded ${this.validPairs.length} valid country pairs`);
+            }
+        } catch (error) {
+            console.error("Error loading country pairs data:", error);
+            // Will fall back to random pairs in getRandomCountryPair
         }
-        
-        // Less chance for countries in different continents
-        // In a real implementation, this would check actual path geometries
-        return Math.random() < 0.05; // 5% chance otherwise
     }
     
     /**
      * Gets a random pair of countries that have a valid path between them
+     * Uses predefined pairs if available, otherwise generates a random pair
      * @returns {Object} - Object with start and end country names
      */
     getRandomCountryPair() {
-        if (!this.svgLoaded || this.countries.length === 0) {
+        if (!this.svgLoaded || this.countries.size === 0) {
             return null;
         }
         
-        // Get a valid starting country (one with adjacencies)
-        let startCountry = null;
+        // Use predefined pairs if available
+        if (this.validPairs.length > 0) {
+            const randomIndex = Math.floor(Math.random() * this.validPairs.length);
+            const pair = this.validPairs[randomIndex];
+            
+            // Make sure both countries exist in our data
+            if (this.countries.has(pair.start) && this.countries.has(pair.end)) {
+                return {
+                    start: pair.start,
+                    end: pair.end
+                };
+            }
+        }
+        
+        // Fallback to random selection
+        return this._generateRandomCountryPair();
+    }
+    
+    /**
+     * Generates a random country pair as a fallback
+     * @returns {Object} - Object with start and end country names
+     * @private
+     */
+    _generateRandomCountryPair() {
+        // Get a valid starting country
+        let startCountryName = null;
         let attempts = 0;
         const maxAttempts = 100;
         
-        while (!startCountry && attempts < maxAttempts) {
-            const randomIndex = Math.floor(Math.random() * this.countries.length);
-            const candidate = this.countries[randomIndex];
+        while (!startCountryName && attempts < maxAttempts) {
+            const randomIndex = Math.floor(Math.random() * this.countriesList.length);
+            const candidateName = this.countriesList[randomIndex];
             
-            if (this.adjacencyMap.has(candidate.name) && 
-                this.adjacencyMap.get(candidate.name).size > 0) {
-                startCountry = candidate;
+            if (this.adjacencyMap.has(candidateName) && 
+                this.adjacencyMap.get(candidateName).size > 0) {
+                startCountryName = candidateName;
             }
             
             attempts++;
         }
         
-        if (!startCountry) {
+        if (!startCountryName) {
             console.error("Could not find a valid starting country with adjacencies");
+            // Just pick any two countries as a last resort
+            if (this.countriesList.length >= 2) {
+                return {
+                    start: this.countriesList[0],
+                    end: this.countriesList[1]
+                };
+            }
             return null;
         }
         
-        // Find countries reachable from startCountry
-        // For simplicity, we'll use countries from the same continent or adjacent ones
+        // Find a suitable end country
         let possibleEndCountries = [];
         
         // Filter countries in the same continent
-        const startContinent = this.continentMap.get(startCountry.name);
+        const startContinent = this.continentMap.get(startCountryName);
         
-        this.countries.forEach(country => {
-            if (country.name === startCountry.name) {
+        this.countriesList.forEach(countryName => {
+            if (countryName === startCountryName) {
                 return; // Skip the start country
             }
             
-            const countryContinent = this.continentMap.get(country.name);
+            const countryContinent = this.continentMap.get(countryName);
             
-            // Include countries in the same continent
-            if (countryContinent === startContinent && startContinent !== 'Unknown') {
-                possibleEndCountries.push(country);
-            } 
-            // Include directly adjacent countries
-            else if (this.isAdjacent(startCountry.name, country.name)) {
-                possibleEndCountries.push(country);
+            // Include countries in the same continent or adjacent ones
+            if ((countryContinent === startContinent && startContinent !== 'Unknown') ||
+                this.isAdjacent(startCountryName, countryName)) {
+                possibleEndCountries.push(countryName);
             }
         });
         
         // If no end countries found, just pick a random one
         if (possibleEndCountries.length === 0) {
-            const nonStartCountries = this.countries.filter(
-                c => c.name !== startCountry.name
+            const nonStartCountries = this.countriesList.filter(
+                name => name !== startCountryName
             );
+            
+            if (nonStartCountries.length === 0) {
+                return null;
+            }
+            
             const randomIndex = Math.floor(Math.random() * nonStartCountries.length);
             return {
-                start: startCountry.name,
-                end: nonStartCountries[randomIndex].name
+                start: startCountryName,
+                end: nonStartCountries[randomIndex]
             };
         }
         
         // Pick a random end country
         const randomEndIndex = Math.floor(Math.random() * possibleEndCountries.length);
-        const endCountry = possibleEndCountries[randomEndIndex];
+        const endCountryName = possibleEndCountries[randomEndIndex];
         
         return {
-            start: startCountry.name,
-            end: endCountry.name
+            start: startCountryName,
+            end: endCountryName
         };
     }
     
     /**
-     * Checks if two countries are adjacent
+     * Checks if two countries are adjacent using the adjacency data
      * @param {string} country1 - Name of first country
      * @param {string} country2 - Name of second country
      * @returns {boolean} - True if countries are adjacent
@@ -249,13 +331,19 @@ export default class MapModel {
         if (!name) return null;
         
         const normalizedName = name.trim().toLowerCase();
-        return this.countries.find(country => 
-            country.name.toLowerCase() === normalizedName
-        ) || null;
+        
+        // Find the country by normalized name
+        for (const [countryName, countryData] of this.countries.entries()) {
+            if (countryName.toLowerCase() === normalizedName) {
+                return countryData;
+            }
+        }
+        
+        return null;
     }
     
     /**
-     * Highlights a country on the map
+     * Sets highlight status for a country
      * @param {string} countryName - Name of the country to highlight
      * @param {boolean} selected - Whether to select or deselect the country
      */
@@ -267,10 +355,51 @@ export default class MapModel {
     }
     
     /**
-     * Gets all countries with their data
-     * @returns {Array} - Array of country objects
+     * Sets a country as the start or end point
+     * @param {string} countryName - Name of the country
+     * @param {string} type - 'start' or 'end'
      */
-    getAllCountries() {
-        return this.countries;
+    setCountryEndpoint(countryName, type) {
+        const country = this.getCountryByName(countryName);
+        if (country) {
+            if (type === 'start') {
+                country.isStart = true;
+            } else if (type === 'end') {
+                country.isEnd = true;
+            }
+        }
+    }
+    
+    /**
+     * Gets all country data for rendering
+     * @returns {Array} - Array of country objects ready for rendering
+     */
+    getAllCountriesForRendering() {
+        // Create a flat array of country objects with rendering information
+        const renderData = [];
+        
+        this.countries.forEach(country => {
+            renderData.push({
+                name: country.name,
+                paths: country.paths,  // All paths for this country
+                fill: country.fill,
+                selected: country.selected,
+                isStart: country.isStart,
+                isEnd: country.isEnd
+            });
+        });
+        
+        return renderData;
+    }
+    
+    /**
+     * Resets all country highlights and endpoints
+     */
+    resetCountryHighlights() {
+        this.countries.forEach(country => {
+            country.selected = false;
+            country.isStart = false;
+            country.isEnd = false;
+        });
     }
 }

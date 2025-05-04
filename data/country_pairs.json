@@ -1,0 +1,154 @@
+{
+  "validPairs": [
+    {
+      "start": "Portugal",
+      "end": "Russia",
+      "continent": "Europe"
+    },
+    {
+      "start": "Spain",
+      "end": "Turkey",
+      "continent": "Europe"
+    },
+    {
+      "start": "Morocco",
+      "end": "Egypt",
+      "continent": "Africa"
+    },
+    {
+      "start": "China",
+      "end": "India",
+      "continent": "Asia"
+    },
+    {
+      "start": "Brazil",
+      "end": "Argentina",
+      "continent": "South America"
+    },
+    {
+      "start": "United States",
+      "end": "Mexico",
+      "continent": "North America"
+    },
+    {
+      "start": "Norway",
+      "end": "Greece",
+      "continent": "Europe"
+    },
+    {
+      "start": "France",
+      "end": "Romania",
+      "continent": "Europe"
+    },
+    {
+      "start": "South Africa",
+      "end": "Ethiopia",
+      "continent": "Africa"
+    },
+    {
+      "start": "Japan",
+      "end": "Thailand",
+      "continent": "Asia"
+    },
+    {
+      "start": "Canada",
+      "end": "Panama",
+      "continent": "North America"
+    },
+    {
+      "start": "Venezuela",
+      "end": "Chile",
+      "continent": "South America"
+    },
+    {
+      "start": "Germany",
+      "end": "Italy",
+      "continent": "Europe"
+    },
+    {
+      "start": "Algeria",
+      "end": "Nigeria",
+      "continent": "Africa"
+    },
+    {
+      "start": "Russia",
+      "end": "Iran",
+      "continent": "Asia"
+    },
+    {
+      "start": "Mexico",
+      "end": "Colombia",
+      "continent": "America"
+    },
+    {
+      "start": "United Kingdom",
+      "end": "Poland",
+      "continent": "Europe"
+    },
+    {
+      "start": "Kenya",
+      "end": "Angola",
+      "continent": "Africa"
+    },
+    {
+      "start": "Saudi Arabia",
+      "end": "Pakistan",
+      "continent": "Asia"
+    },
+    {
+      "start": "Peru",
+      "end": "Uruguay",
+      "continent": "South America"
+    },
+    {
+      "start": "Indonesia",
+      "end": "Vietnam",
+      "continent": "Asia"
+    },
+    {
+      "start": "Turkey",
+      "end": "Iraq",
+      "continent": "Middle East"
+    },
+    {
+      "start": "Libya",
+      "end": "Democratic Republic of the Congo",
+      "continent": "Africa"
+    },
+    {
+      "start": "Portugal",
+      "end": "Greece",
+      "continent": "Europe"
+    },
+    {
+      "start": "Kazakhstan",
+      "end": "Mongolia",
+      "continent": "Asia"
+    },
+    {
+      "start": "Norway",
+      "end": "Ukraine",
+      "continent": "Europe"
+    },
+    {
+      "start": "Nigeria",
+      "end": "South Africa",
+      "continent": "Africa"
+    },
+    {
+      "start": "Colombia",
+      "end": "Bolivia",
+      "continent": "South America"
+    },
+    {
+      "start": "Spain",
+      "end": "Egypt",
+      "continent": "Mediterranean"
+    },
+    {
+      "start": "Netherlands",
+      "end": "Czech Republic",
+      "continent": "Europe"
+    }
+  ]
+}

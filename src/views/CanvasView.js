@@ -21,8 +21,9 @@ export default class CanvasView {
         
         // Pre-rendered map
         this.preRenderedMap = null;
+        this.countryHitMap = new Map(); // Map for hit testing
         
-        // Colors
+        // Colors - Pixel art style colors
         this.defaultFill = '#55d6c2'; // Default country color
         this.highlightFill = '#ff6b6b'; // Color for highlighted countries
         this.startEndFill = '#55d688'; // Color for start/end countries
@@ -129,13 +130,13 @@ export default class CanvasView {
         // Convert to map coordinates
         const mapCoords = this._screenToMapCoords(canvasX, canvasY);
         
-        // Find which country the mouse is over (using the model)
+        // Find which country the mouse is over
         const hoveredCountry = this._getHoveredCountry(mapCoords.x, mapCoords.y);
         
         // Update tooltip display
         if (hoveredCountry) {
             this.tooltip.style.opacity = 1;
-            this.tooltipText.innerText = hoveredCountry.name;
+            this.tooltipText.innerText = hoveredCountry;
         } else {
             this.tooltip.style.opacity = 0;
         }
@@ -157,20 +158,34 @@ export default class CanvasView {
     }
     
     /**
-     * Gets the country at a given point (hit detection)
-     * This is a placeholder - the actual implementation would use the model
+     * Gets the country at a given point using the hit map
      * @param {number} x - X coordinate on the map
      * @param {number} y - Y coordinate on the map
-     * @returns {Object|null} - Country object or null if none found
+     * @returns {string|null} - Country name or null if none found
      * @private
      */
     _getHoveredCountry(x, y) {
-        // This is a placeholder - in a real implementation, 
-        // we would use the controller to get this information from the model
+        // Check if we have a hit map
+        if (!this.hitCanvas) {
+            return null;
+        }
         
-        // For now, we'll assume hit detection is handled by the controller
-        // and this method would be linked to an external data source
-        return null;
+        // Get the hit testing context
+        const hitCtx = this.hitCanvas.getContext('2d');
+        
+        // Check if point is within any country
+        try {
+            // Get pixel data at mouse position
+            const pixel = hitCtx.getImageData(x, y, 1, 1).data;
+            // Convert pixel color to ID
+            const colorKey = `${pixel[0]},${pixel[1]},${pixel[2]}`;
+            
+            // Look up country by color key
+            return this.countryHitMap.get(colorKey) || null;
+        } catch (e) {
+            // This happens if the point is outside the canvas
+            return null;
+        }
     }
     
     /**
@@ -232,8 +247,8 @@ export default class CanvasView {
     }
     
     /**
-     * Renders the map on the canvas
-     * @param {Array} countries - Array of country objects
+     * Renders the map on the canvas, handling countries with multiple paths
+     * @param {Array} countries - Array of country objects with multiple paths
      */
     renderMap(countries) {
         if (!countries || countries.length === 0) {
@@ -249,31 +264,68 @@ export default class CanvasView {
         mapCanvas.height = 2000;
         const mapCtx = mapCanvas.getContext('2d');
         
+        // Create a canvas for hit testing
+        this.hitCanvas = document.createElement('canvas');
+        this.hitCanvas.width = mapCanvas.width;
+        this.hitCanvas.height = mapCanvas.height;
+        const hitCtx = this.hitCanvas.getContext('2d');
+        
+        // Clear the hit map
+        this.countryHitMap = new Map();
+        
         // Enable high-quality image scaling
         mapCtx.imageSmoothingEnabled = true;
         mapCtx.imageSmoothingQuality = 'high';
         
         // Draw each country
-        countries.forEach(country => {
+        countries.forEach((country, index) => {
             try {
-                const path = new Path2D(country.path);
+                // Create a unique color for hit testing based on index
+                const r = (index & 0xFF);
+                const g = ((index >> 8) & 0xFF);
+                const b = ((index >> 16) & 0xFF);
+                const colorKey = `${r},${g},${b}`;
                 
-                // Fill with appropriate color based on country state
-                if (country.isStart || country.isEnd) {
+                // Store country name by color key for hit testing
+                this.countryHitMap.set(colorKey, country.name);
+                
+                // Choose fill color based on country state
+                if (country.isStart) {
                     mapCtx.fillStyle = this.startEndFill;
+                } else if (country.isEnd) {
+                    mapCtx.fillStyle = '#55d6c2'; // Different color for end country
                 } else if (country.selected) {
                     mapCtx.fillStyle = this.highlightFill;
                 } else {
                     mapCtx.fillStyle = country.fill || this.defaultFill;
                 }
                 
-                // Apply pixel-art style borders
+                // Set stroke style
                 mapCtx.strokeStyle = '#000000';
                 mapCtx.lineWidth = 1.5;
                 
-                // Fill and stroke the path
-                mapCtx.fill(path);
-                mapCtx.stroke(path);
+                // Set hit testing color
+                hitCtx.fillStyle = `rgb(${r},${g},${b})`;
+                
+                // Draw all paths for this country
+                if (country.paths && Array.isArray(country.paths)) {
+                    country.paths.forEach(pathData => {
+                        const path = new Path2D(pathData);
+                        
+                        // Draw on the visible map
+                        mapCtx.fill(path);
+                        mapCtx.stroke(path);
+                        
+                        // Draw on the hit testing canvas (no stroke needed)
+                        hitCtx.fill(path);
+                    });
+                } else if (country.path) {
+                    // Backward compatibility for single path
+                    const path = new Path2D(country.path);
+                    mapCtx.fill(path);
+                    mapCtx.stroke(path);
+                    hitCtx.fill(path);
+                }
             } catch (e) {
                 console.error("Error drawing country:", country.name, e);
             }
@@ -355,8 +407,12 @@ export default class CanvasView {
      * @param {string} type - Type of flash ('start', 'end', 'correct', 'error')
      */
     flashCountry(countryName, type = 'correct') {
-        // This would be implemented to work with the model to highlight a country temporarily
-        // For now, it's a placeholder for implementation via the controller
+        // This would be implemented to work with the controller
+        // For a complete implementation, we'd need to:
+        // 1. Temporarily change the country's color
+        // 2. Redraw the map
+        // 3. Set a timeout to revert to the original color
+        // 4. Redraw again
     }
     
     /**

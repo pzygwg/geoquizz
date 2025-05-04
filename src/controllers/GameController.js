@@ -39,22 +39,32 @@ export default class GameController {
         // Show loading indicator
         this.canvasView.showLoading(true);
         
-        // Load map data
-        const success = await this.model.loadMapData(svgUrl);
-        
-        if (success) {
-            // Render the map
-            this.canvasView.renderMap(this.model.getAllCountries());
+        try {
+            // Load map data
+            const success = await this.model.loadMapData(svgUrl);
             
-            // Hide loading indicator
+            if (success) {
+                // Render the map
+                this.canvasView.renderMap(this.model.getAllCountriesForRendering());
+                
+                // Hide loading indicator
+                this.canvasView.showLoading(false);
+                
+                // Set up menu view handlers
+                this.menuView.setPlayButtonHandler(() => this.startGame());
+                this.menuView.setCountryInputHandler((countryName) => this.handleCountryInput(countryName));
+                
+                console.log('Game initialized successfully');
+            } else {
+                console.error("Failed to load map data");
+                this.canvasView.showLoading(false);
+                // Show error message
+                alert('Failed to load map data. Please refresh the page to try again.');
+            }
+        } catch (error) {
+            console.error("Error initializing game:", error);
             this.canvasView.showLoading(false);
-            
-            // Set up menu view handlers
-            this.menuView.setPlayButtonHandler(() => this.startGame());
-            this.menuView.setCountryInputHandler((countryName) => this.handleCountryInput(countryName));
-        } else {
-            console.error("Failed to load map data");
-            // Could show an error message to the user here
+            alert('An error occurred while initializing the game. Please refresh the page to try again.');
         }
     }
     
@@ -76,7 +86,10 @@ export default class GameController {
         // Hide menu and show game UI
         this.menuView.showMenu(false).showGameUI(true);
         
-        // Get a random country pair
+        // Reset country highlights
+        this.model.resetCountryHighlights();
+        
+        // Get a random country pair from our predefined valid pairs
         const countryPair = this.model.getRandomCountryPair();
         if (!countryPair) {
             console.error("Could not generate a valid country pair");
@@ -86,6 +99,12 @@ export default class GameController {
         // Set start and end countries
         this.startCountry = countryPair.start;
         this.endCountry = countryPair.end;
+        
+        console.log(`Starting new game: ${this.startCountry} to ${this.endCountry}`);
+        
+        // Mark countries as start/end
+        this.model.setCountryEndpoint(this.startCountry, 'start');
+        this.model.setCountryEndpoint(this.endCountry, 'end');
         
         // Update UI with country names
         this.menuView.updateGameInfo(this.startCountry, this.endCountry);
@@ -103,7 +122,7 @@ export default class GameController {
         this.model.setCountryHighlight(this.startCountry, true);
         
         // Update map view
-        this.canvasView.renderMap(this.model.getAllCountries());
+        this.canvasView.renderMap(this.model.getAllCountriesForRendering());
         
         // Add start country to path list
         this.menuView.clearPath().addToPath(this.startCountry, 'correct');
@@ -125,7 +144,7 @@ export default class GameController {
         // Normalize input and validate
         countryName = this._normalizeCountryName(countryName);
         
-        // Check if country exists
+        // Check if country exists in our data
         const country = this.model.getCountryByName(countryName);
         if (!country) {
             this._handleInvalidInput(countryName, 'not-found');
@@ -141,7 +160,7 @@ export default class GameController {
         // Get the last country in the current path
         const lastCountry = this.currentPath[this.currentPath.length - 1];
         
-        // Check if the new country is adjacent to the last one
+        // Check if the new country is adjacent to the last one using our adjacency JSON data
         if (!this.model.isAdjacent(lastCountry, countryName)) {
             this._handleInvalidInput(countryName, 'not-adjacent');
             return;
@@ -156,7 +175,7 @@ export default class GameController {
         
         // Highlight country on map
         this.model.setCountryHighlight(countryName, true);
-        this.canvasView.renderMap(this.model.getAllCountries());
+        this.canvasView.renderMap(this.model.getAllCountriesForRendering());
         
         // Check if player has reached the destination
         if (countryName === this.endCountry) {
@@ -174,9 +193,6 @@ export default class GameController {
         this.gameStats.errors++;
         
         // Show error in UI
-        this.menuView.addToPath(countryName, 'error');
-        
-        // Could add specific error messages based on reason
         let errorMessage = '';
         
         switch (reason) {
@@ -230,12 +246,10 @@ export default class GameController {
         this.menuView.showGameUI(false).showMenu(true);
         
         // Reset country highlights on map
-        this.model.getAllCountries().forEach(country => {
-            country.selected = false;
-        });
+        this.model.resetCountryHighlights();
         
         // Update map view
-        this.canvasView.renderMap(this.model.getAllCountries());
+        this.canvasView.renderMap(this.model.getAllCountriesForRendering());
     }
     
     /**
