@@ -1,0 +1,315 @@
+/* 
+ * GeoQuizz - Style Sheet
+ * Pixel-art/cartoonish theme with Press Start 2P font
+ */
+
+/* CSS Variables for consistent theming */
+:root {
+    /* Color Palette - Pastel pixel art theme */
+    --primary-bg: #372963;
+    --secondary-bg: #4a3a7a;
+    --accent-color: #ff6b6b;
+    --accent-hover: #ff8e8e;
+    --text-color: #ffffff;
+    --highlight-color: #55d6c2;
+    --success-color: #55d688;
+    --error-color: #d65555;
+    --menu-bg: #2a2040;
+    --button-bg: #ff6b6b;
+    --button-shadow: #983f3f;
+    --text-shadow: #000000;
+    
+    /* Border styling */
+    --pixel-border: 4px solid #000000;
+    --pixel-radius: 0;
+    
+    /* Shadow effects */
+    --box-shadow: 5px 5px 0px #000000;
+    
+    /* Font settings */
+    --pixel-font: 'Press Start 2P', cursive;
+    --base-font-size: 16px;
+}
+
+/* Base reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body setup */
+body {
+    overflow: hidden;
+    font-family: var(--pixel-font);
+    background-color: var(--primary-bg);
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-color);
+}
+
+/* Game container */
+#gameContainer {
+    position: relative;
+    width: 85%;
+    height: 85%;
+    max-width: 1400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Main title */
+h1 {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--accent-color);
+    text-shadow: 4px 4px 0px var(--text-shadow);
+    letter-spacing: 4px;
+}
+
+/* Menu styling */
+#menuContainer {
+    position: absolute;
+    width: 80%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--menu-bg);
+    padding: 30px;
+    border: var(--pixel-border);
+    box-shadow: var(--box-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    z-index: 100;
+}
+
+.game-title {
+    font-size: 2rem;
+    color: var(--highlight-color);
+    text-shadow: 3px 3px 0px var(--text-shadow);
+}
+
+/* Pixel button style */
+.pixel-button {
+    background-color: var(--button-bg);
+    color: white;
+    border: none;
+    font-family: var(--pixel-font);
+    font-size: 1.2rem;
+    padding: 15px 25px;
+    cursor: pointer;
+    border: 3px solid black;
+    box-shadow: 5px 5px 0px var(--button-shadow);
+    transition: all 0.1s ease;
+    position: relative;
+    text-transform: uppercase;
+}
+
+.pixel-button:hover {
+    background-color: var(--accent-hover);
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0px var(--button-shadow);
+}
+
+.pixel-button:active {
+    transform: translate(5px, 5px);
+    box-shadow: none;
+}
+
+.pixel-button.small {
+    font-size: 0.8rem;
+    padding: 10px 15px;
+}
+
+/* Game UI */
+#gameUIContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    z-index: 50;
+    background-color: rgba(42, 32, 64, 0.8);
+    border-bottom: var(--pixel-border);
+}
+
+#gameInfo {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 0.8rem;
+}
+
+#userInputArea {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+#countryInput {
+    font-family: var(--pixel-font);
+    font-size: 1rem;
+    padding: 10px;
+    border: var(--pixel-border);
+    background-color: var(--text-color);
+    color: var(--primary-bg);
+    width: 100%;
+    max-width: 400px;
+}
+
+#pathList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.path-item {
+    background-color: var(--secondary-bg);
+    padding: 8px;
+    border: 2px solid black;
+    font-size: 0.7rem;
+}
+
+.path-item.correct {
+    background-color: var(--success-color);
+}
+
+.path-item.error {
+    background-color: var(--error-color);
+    animation: shake 0.5s;
+}
+
+/* Map container */
+#mapContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: var(--pixel-border);
+    box-shadow: var(--box-shadow);
+    background-color: var(--secondary-bg);
+}
+
+#mapCanvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: grab;
+}
+
+#mapCanvas:active {
+    cursor: grabbing;
+}
+
+#loadingMessage {
+    color: white;
+    font-size: 1.2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    text-align: center;
+    background-color: var(--menu-bg);
+    padding: 15px 20px;
+    border: var(--pixel-border);
+}
+
+/* Tooltip */
+#tooltip {
+    position: absolute;
+    background-color: var(--menu-bg);
+    width: fit-content;
+    opacity: 0;
+    border: var(--pixel-border);
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    z-index: 10;
+    box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
+    transition: opacity 0.2s ease;
+}
+
+/* Helper classes */
+.hidden {
+    display: none !important;
+}
+
+/* Shake animation for error feedback */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* High contrast mode */
+.high-contrast {
+    --primary-bg: #000000;
+    --secondary-bg: #333333;
+    --accent-color: #ffff00;
+    --accent-hover: #ffff99;
+    --text-color: #ffffff;
+    --highlight-color: #00ffff;
+    --success-color: #00ff00;
+    --error-color: #ff0000;
+    --menu-bg: #000000;
+    --button-bg: #ffff00;
+    --button-shadow: #999900;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    .game-title {
+        font-size: 1.5rem;
+    }
+    
+    .pixel-button {
+        font-size: 1rem;
+        padding: 12px 20px;
+    }
+    
+    #gameInfo {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-height: 600px) {
+    h1 {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+    }
+    
+    #gameContainer {
+        height: 90%;
+    }
+    
+    #menuContainer {
+        padding: 15px;
+    }
+}
+
+/* Hide SVG object used only for data extraction */
+#svgObject {
+    width: 0;
+    height: 0;
+    position: absolute;
+    visibility: hidden;
+    display: none;
+}

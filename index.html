@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoQuizz - Country Path Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+    <!-- Game title -->
+    <h1>GeoQuizz</h1>
+    
+    <!-- Main container -->
+    <div id="gameContainer">
+        <!-- Menu container -->
+        <div id="menuContainer">
+            <div class="game-title">Country Path</div>
+            <button id="playButton" class="pixel-button">Play Country Path</button>
+        </div>
+        
+        <!-- Game UI container -->
+        <div id="gameUIContainer" class="hidden">
+            <div id="gameInfo">
+                <div id="startCountry">Starting Country: <span></span></div>
+                <div id="endCountry">Destination Country: <span></span></div>
+            </div>
+            
+            <div id="userInputArea">
+                <input type="text" id="countryInput" placeholder="Type a country name" aria-label="Enter a country name">
+                <div id="pathList"></div>
+            </div>
+            
+            <button id="resetButton" class="pixel-button small">Reset Game</button>
+        </div>
+        
+        <!-- Map container -->
+        <div id="mapContainer">
+            <div id="loadingMessage">Loading map...</div>
+            <!-- Canvas element for rendering the map -->
+            <canvas id="mapCanvas" aria-label="Interactive World Map"></canvas>
+            <!-- Hidden SVG object used only for data extraction -->
+            <object id="svgObject" type="image/svg+xml" data="assets/world.svg"></object>
+        </div>
+        
+        <!-- Tooltip element for displaying country names -->
+        <div id="tooltip">
+            <p id="tooltipText">Country Name</p>
+        </div>
+    </div>
+    
+    <!-- Game scripts -->
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
