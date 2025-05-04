@@ -196,7 +196,8 @@ export default class CanvasView {
     _handleWheelZoom(event) {
         event.preventDefault(); // Prevent page scrolling
         
-        const zoomIntensity = 0.1;
+        // Reduced zoom intensity for slower zooming
+        const zoomIntensity = 0.04; // Was 0.1, now much slower
         const maxZoom = 10.0;
         const minZoom = 0.5;
         
@@ -205,11 +206,18 @@ export default class CanvasView {
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
         
-        // Determine zoom direction
-        const delta = event.deltaY > 0 ? -1 : 1; // -1 for zoom out, 1 for zoom in
+        // Normalize wheel delta for better cross-browser compatibility
+        // Apply a factor to make zooming more consistent
+        const normalizedDelta = -Math.sign(event.deltaY) * 0.5; // Smoothen the zoom
         
-        // Calculate new zoom level
-        const newZoomLevel = Math.max(minZoom, Math.min(maxZoom, this.zoomLevel * (1 + delta * zoomIntensity)));
+        // Calculate new zoom level with smoother factor
+        const newZoomLevel = Math.max(
+            minZoom, 
+            Math.min(
+                maxZoom, 
+                this.zoomLevel * (1 + normalizedDelta * zoomIntensity)
+            )
+        );
         
         // Calculate the point on the map under the mouse before zoom
         const mapCoords = this._screenToMapCoords(mouseX, mouseY);
