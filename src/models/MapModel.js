@@ -11,6 +11,11 @@ export default class MapModel {
         this.countriesList = []; // List of unique country names
         this.validPairs = []; // List of valid country pairs for the game
         this.svgLoaded = false;
+        
+        // For "Name Them All" game mode
+        this.regionCountries = new Map(); // Map of region name -> array of countries
+        this.namedCountries = new Set(); // Set of countries already named
+        this.currentRegion = null; // Current selected region
     }
 
     /**
@@ -44,6 +49,9 @@ export default class MapModel {
             
             // Load valid country pairs from JSON
             await this._loadCountryPairs();
+            
+            // Load countries by region for "Name Them All" game
+            await this._loadRegionCountries();
             
             this.svgLoaded = true;
             return true;
@@ -198,6 +206,48 @@ export default class MapModel {
     }
     
     /**
+     * Loads country regions data from JSON for "Name Them All" game
+     * @private
+     */
+    async _loadRegionCountries() {
+        try {
+            const response = await fetch('data/countries_by_region.json');
+            if (!response.ok) {
+                throw new Error(`Region data fetch failed: ${response.status}`);
+            }
+            
+            const regionData = await response.json();
+            
+            // Process regions data
+            if (regionData && regionData.regions) {
+                // Clear existing region data
+                this.regionCountries.clear();
+                
+                // Process each region
+                Object.entries(regionData.regions).forEach(([region, countries]) => {
+                    // Filter to only include countries that exist in our SVG map
+                    const validCountries = countries.filter(country => 
+                        this.countries.has(country)
+                    );
+                    
+                    this.regionCountries.set(region, validCountries);
+                });
+                
+                // Add "World" as all countries in our map
+                if (!this.regionCountries.has("World")) {
+                    this.regionCountries.set("World", [...this.countriesList]);
+                }
+                
+                console.log(`Loaded region data with ${this.regionCountries.size} regions`);
+            }
+        } catch (error) {
+            console.error("Error loading region data:", error);
+            // Create fallback regions based on continents if needed
+            this._generateFallbackRegions();
+        }
+    }
+    
+    /**
      * Gets a random pair of countries that have a valid path between them
      * Uses predefined pairs if available, otherwise generates a random pair
      * @returns {Object} - Object with start and end country names
@@ -332,13 +382,57 @@ export default class MapModel {
         
         const normalizedName = name.trim().toLowerCase();
         
-        // Find the country by normalized name
+        // Try direct match first
         for (const [countryName, countryData] of this.countries.entries()) {
             if (countryName.toLowerCase() === normalizedName) {
+                console.log(`Found exact match for country: ${countryName}`);
                 return countryData;
             }
         }
         
+        // Special cases for common country names
+        // Maps common names or abbreviations to official names
+        const specialCases = {
+            'usa': 'United States',
+            'united states of america': 'United States',
+            'uk': 'United Kingdom',
+            'great britain': 'United Kingdom',
+            'england': 'United Kingdom',
+            'holland': 'Netherlands',
+            'macedonia': 'North Macedonia',
+            'czechia': 'Czech Republic',
+            'russia': 'Russia',
+            'america': 'United States',
+            'uae': 'United Arab Emirates'
+        };
+        
+        // Check if we have a special case match
+        if (specialCases[normalizedName]) {
+            const officialName = specialCases[normalizedName];
+            const countryData = this.countries.get(officialName);
+            if (countryData) {
+                console.log(`Found special case match for country: ${normalizedName} -> ${officialName}`);
+                return countryData;
+            }
+        }
+        
+        // Check with exact capitalization from countries_by_region.json
+        if (this.regionCountries.has('Europe')) {
+            // Try to find the country in any region with more lenient matching
+            for (const [region, countries] of this.regionCountries.entries()) {
+                for (const countryName of countries) {
+                    if (countryName.toLowerCase() === normalizedName) {
+                        const countryData = this.countries.get(countryName);
+                        if (countryData) {
+                            console.log(`Found region-based match for country: ${normalizedName} -> ${countryName}`);
+                            return countryData;
+                        }
+                    }
+                }
+            }
+        }
+        
+        console.log(`No match found for country: ${normalizedName}`);
         return null;
     }
     
@@ -401,5 +495,183 @@ export default class MapModel {
             country.isStart = false;
             country.isEnd = false;
         });
+    }
+    
+    /**
+     * Generates fallback regions if JSON loading fails
+     * @private
+     */
+    _generateFallbackRegions() {
+        console.warn("Using fallback region generation");
+        
+        // Create basic regions based on continents from existing data
+        const europeanCountries = [];
+        const americanCountries = [];
+        const asianCountries = [];
+        const africanCountries = [];
+        const otherCountries = [];
+        
+        this.countriesList.forEach(countryName => {
+            const continent = this.continentMap.get(countryName) || '';
+            const continentLower = continent.toLowerCase();
+            
+            if (continentLower.includes('europe')) {
+                europeanCountries.push(countryName);
+            } else if (continentLower.includes('america') || 
+                    continentLower.includes('north') || 
+                    continentLower.includes('south') || 
+                    continentLower.includes('caribbean')) {
+                americanCountries.push(countryName);
+            } else if (continentLower.includes('asia') || 
+                    continentLower.includes('middle east')) {
+                asianCountries.push(countryName);
+            } else if (continentLower.includes('africa')) {
+                africanCountries.push(countryName);
+            } else {
+                otherCountries.push(countryName);
+            }
+        });
+        
+        // Set up regions
+        this.regionCountries.set('Europe', europeanCountries);
+        this.regionCountries.set('America', americanCountries);
+        this.regionCountries.set('Asia', asianCountries);
+        this.regionCountries.set('Africa', africanCountries);
+        this.regionCountries.set('World', this.countriesList);
+    }
+    
+    /**
+     * Sets the current region for "Name Them All" game
+     * @param {string} region - Name of the region to set
+     * @returns {boolean} - True if the region was found and set
+     */
+    setRegion(region) {
+        if (this.regionCountries.has(region)) {
+            this.currentRegion = region;
+            // Reset named countries when changing regions
+            this.namedCountries.clear();
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Gets all available regions for the game
+     * @returns {Array} - Array of region names
+     */
+    getAvailableRegions() {
+        // Make sure we have regions loaded
+        if (this.regionCountries.size === 0) {
+            console.warn('No regions loaded, using fallback regions');
+            // Fallback regions if data wasn't loaded properly
+            return ['Europe', 'America', 'Asia', 'Africa', 'World'];
+        }
+        
+        const regions = Array.from(this.regionCountries.keys());
+        console.log('Available regions from model:', regions);
+        return regions;
+    }
+    
+    /**
+     * Gets countries for the current region
+     * @returns {Array} - Array of country names in the current region
+     */
+    getCurrentRegionCountries() {
+        if (!this.currentRegion || !this.regionCountries.has(this.currentRegion)) {
+            return [];
+        }
+        return this.regionCountries.get(this.currentRegion);
+    }
+    
+    /**
+     * Checks if a country is in the current region
+     * @param {string} countryName - Name of the country to check
+     * @returns {boolean} - True if the country is in the current region
+     */
+    isCountryInCurrentRegion(countryName) {
+        if (!this.currentRegion) {
+            console.warn('No current region set');
+            return false;
+        }
+        
+        // Normalize the input country name
+        const normalizedInput = countryName.trim().toLowerCase();
+        
+        // Get countries in the current region
+        const regionCountries = this.regionCountries.get(this.currentRegion) || [];
+        console.log(`Checking if ${countryName} is in region ${this.currentRegion}`);
+        
+        // Case-insensitive check
+        for (const regionCountry of regionCountries) {
+            if (regionCountry.toLowerCase() === normalizedInput) {
+                console.log(`Found match for ${countryName} in region ${this.currentRegion}`);
+                return true;
+            }
+        }
+        
+        // No match found
+        console.log(`No match for ${countryName} in region ${this.currentRegion}`);
+        return false;
+    }
+    
+    /**
+     * Marks a country as named in the "Name Them All" game
+     * @param {string} countryName - Name of the country to mark
+     * @returns {boolean} - True if the country was valid and marked
+     */
+    markCountryNamed(countryName) {
+        if (this.isCountryInCurrentRegion(countryName) && !this.namedCountries.has(countryName)) {
+            this.namedCountries.add(countryName);
+            // Also highlight the country on the map
+            this.setCountryHighlight(countryName, true);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Gets all named countries for the current region
+     * @returns {Array} - Array of named country names
+     */
+    getNamedCountries() {
+        return Array.from(this.namedCountries);
+    }
+    
+    /**
+     * Gets the count of remaining countries to name
+     * @returns {Object} - Object with named, total, and remaining counts
+     */
+    getRemainingCountsForRegion() {
+        if (!this.currentRegion) {
+            return { named: 0, total: 0, remaining: 0 };
+        }
+        
+        const regionCountries = this.regionCountries.get(this.currentRegion) || [];
+        const namedCount = this.namedCountries.size;
+        const totalCount = regionCountries.length;
+        
+        return {
+            named: namedCount,
+            total: totalCount,
+            remaining: totalCount - namedCount
+        };
+    }
+    
+    /**
+     * Checks if all countries in the current region have been named
+     * @returns {boolean} - True if all countries have been named
+     */
+    areAllCountriesNamed() {
+        if (!this.currentRegion) return false;
+        
+        const regionCountries = this.regionCountries.get(this.currentRegion) || [];
+        return this.namedCountries.size === regionCountries.length;
+    }
+    
+    /**
+     * Resets the named countries for a new game
+     */
+    resetNamedCountries() {
+        this.namedCountries.clear();
     }
 }

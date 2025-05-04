@@ -28,6 +28,10 @@ export default class CanvasView {
         this.highlightFill = '#ff6b6b'; // Color for highlighted countries
         this.startEndFill = '#55d688'; // Color for start/end countries
         this.hoverFill = '#ffcc66'; // Color for hovered countries
+        this.namedFill = '#ffcc00'; // Yellow color for named countries in Name Them All
+        
+        // Game mode
+        this.gameMode = 'countryPath'; // Default game mode
         
         // Initialize event listeners
         this._initEventListeners();
@@ -297,15 +301,25 @@ export default class CanvasView {
                 // Store country name by color key for hit testing
                 this.countryHitMap.set(colorKey, country.name);
                 
-                // Choose fill color based on country state
-                if (country.isStart) {
-                    mapCtx.fillStyle = this.startEndFill;
-                } else if (country.isEnd) {
-                    mapCtx.fillStyle = '#55d6c2'; // Different color for end country
-                } else if (country.selected) {
-                    mapCtx.fillStyle = this.highlightFill;
+                // Choose fill color based on country state and game mode
+                if (this.gameMode === 'nameThemAll') {
+                    // For "Name Them All" game mode, named countries are yellow
+                    if (country.selected) {
+                        mapCtx.fillStyle = this.namedFill; // Yellow for correctly named countries
+                    } else {
+                        mapCtx.fillStyle = country.fill || this.defaultFill;
+                    }
                 } else {
-                    mapCtx.fillStyle = country.fill || this.defaultFill;
+                    // For "Country Path" game mode
+                    if (country.isStart) {
+                        mapCtx.fillStyle = this.startEndFill;
+                    } else if (country.isEnd) {
+                        mapCtx.fillStyle = '#55d6c2'; // Different color for end country
+                    } else if (country.selected) {
+                        mapCtx.fillStyle = this.highlightFill;
+                    } else {
+                        mapCtx.fillStyle = country.fill || this.defaultFill;
+                    }
                 }
                 
                 // Set stroke style

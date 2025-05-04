@@ -17,6 +17,9 @@ export default class GameController {
         
         // Game state
         this.isGameActive = false;
+        this.currentGameMode = 'countryPath'; // Default game mode
+        
+        // Country Path game state
         this.startCountry = null;
         this.endCountry = null;
         this.currentPath = [];
@@ -26,6 +29,11 @@ export default class GameController {
             startTime: null,
             endTime: null
         };
+        
+        // Name Them All game state
+        this.selectedRegion = null;
+        this.regionCountries = [];
+        this.namedCountries = new Set();
         
         // Bind event handlers
         this._bindEventListeners();
@@ -75,13 +83,27 @@ export default class GameController {
     _bindEventListeners() {
         // Listen for reset game event
         document.addEventListener('resetGame', () => this.resetGame());
+        
+        // Listen for region selection event
+        console.log('Binding selectRegion event listener');
+        document.addEventListener('selectRegion', () => {
+            console.log('selectRegion event received, showing region selection');
+            this.showRegionSelection();
+        });
     }
     
     /**
-     * Starts a new game
+     * Starts a new Country Path game
      */
     startGame() {
         this.isGameActive = true;
+        this.currentGameMode = 'countryPath';
+        this.canvasView.gameMode = 'countryPath';
+        
+        // Make sure path list is visible for this game mode
+        if (this.menuView.pathList) {
+            this.menuView.pathList.style.display = '';
+        }
         
         // Hide menu and show game UI
         this.menuView.showMenu(false).showGameUI(true);
@@ -100,7 +122,7 @@ export default class GameController {
         this.startCountry = countryPair.start;
         this.endCountry = countryPair.end;
         
-        console.log(`Starting new game: ${this.startCountry} to ${this.endCountry}`);
+        console.log(`Starting new Country Path game: ${this.startCountry} to ${this.endCountry}`);
         
         // Mark countries as start/end
         this.model.setCountryEndpoint(this.startCountry, 'start');
@@ -127,6 +149,11 @@ export default class GameController {
         // Add start country to path list
         this.menuView.clearPath().addToPath(this.startCountry, 'correct');
         
+        // Set input placeholder
+        if (this.menuView.countryInput) {
+            this.menuView.countryInput.placeholder = 'Type an adjacent country name';
+        }
+        
         // Focus input
         this.menuView.clearInput();
     }
@@ -134,23 +161,44 @@ export default class GameController {
     /**
      * Handles country input from user
      * @param {string} countryName - Name of the country entered by user
+     * @param {string} gameMode - Current game mode
      */
-    handleCountryInput(countryName) {
+    handleCountryInput(countryName, gameMode) {
         if (!this.isGameActive) return;
         
         // Clear input field for next entry
         this.menuView.clearInput();
         
+        // Store original input for debugging
+        const originalInput = countryName;
+        
         // Normalize input and validate
         countryName = this._normalizeCountryName(countryName);
+        console.log(`Input: "${originalInput}" normalized to "${countryName}"`);
         
-        // Check if country exists in our data
+        // Use different handling for Name Them All mode since we need case-sensitive matching
+        if (gameMode === 'nameThemAll') {
+            this._handleNameThemAllInput(countryName);
+            return;
+        }
+        
+        // For Country Path mode, check if country exists in our data
         const country = this.model.getCountryByName(countryName);
         if (!country) {
             this._handleInvalidInput(countryName, 'not-found');
             return;
         }
         
+        // Handle Country Path input
+        this._handleCountryPathInput(countryName);
+    }
+    
+    /**
+     * Handles country input for the Country Path game mode
+     * @param {string} countryName - Name of the country entered by user
+     * @private
+     */
+    _handleCountryPathInput(countryName) {
         // Check if country is already in path
         if (this.currentPath.includes(countryName)) {
             this._handleInvalidInput(countryName, 'already-used');
@@ -184,9 +232,61 @@ export default class GameController {
     }
     
     /**
+     * Handles country input for the Name Them All game mode
+     * @param {string} countryName - Name of the country entered by user
+     * @private
+     */
+    _handleNameThemAllInput(countryName) {
+        console.log(`Handling input for "Name Them All": "${countryName}"`);
+        console.log(`Current region: ${this.selectedRegion}`);
+        console.log(`Countries in current region:`, this.model.getCurrentRegionCountries());
+        
+        // Check if the country is in the current region
+        const isInRegion = this.model.isCountryInCurrentRegion(countryName);
+        console.log(`Is ${countryName} in region? ${isInRegion}`);
+        
+        if (!isInRegion) {
+            // Check if the country exists at all
+            const country = this.model.getCountryByName(countryName);
+            if (country) {
+                console.log(`Country ${countryName} exists but not in region ${this.selectedRegion}`);
+            } else {
+                console.log(`Country ${countryName} does not exist in data`);
+            }
+            
+            this._handleInvalidInput(countryName, 'not-in-region');
+            return;
+        }
+        
+        // Check if the country has already been named
+        if (this.namedCountries.has(countryName)) {
+            console.log(`Country ${countryName} already named`);
+            this._handleInvalidInput(countryName, 'already-named');
+            return;
+        }
+        
+        // Valid country - mark it as named
+        console.log(`Marking ${countryName} as named`);
+        this.namedCountries.add(countryName);
+        this.model.markCountryNamed(countryName);
+        
+        // Update the UI with progress
+        const counts = this.model.getRemainingCountsForRegion();
+        this.menuView.updateNameThemAllUI(this.selectedRegion, counts.named, counts.total);
+        
+        // Update the map
+        this.canvasView.renderMap(this.model.getAllCountriesForRendering());
+        
+        // Check if all countries have been named
+        if (this.model.areAllCountriesNamed()) {
+            this._handleNameThemAllVictory();
+        }
+    }
+    
+    /**
      * Handles invalid country input
      * @param {string} countryName - Name of the country entered
-     * @param {string} reason - Reason for invalid input ('not-found', 'already-used', 'not-adjacent')
+     * @param {string} reason - Reason for invalid input ('not-found', 'already-used', 'not-adjacent', etc.)
      * @private
      */
     _handleInvalidInput(countryName, reason) {
@@ -205,16 +305,127 @@ export default class GameController {
             case 'not-adjacent':
                 errorMessage = 'Not adjacent';
                 break;
+            case 'not-in-region':
+                errorMessage = 'Not in this region';
+                break;
+            case 'already-named':
+                errorMessage = 'Already named';
+                break;
             default:
                 errorMessage = 'Invalid input';
         }
         
-        // Adding the error message to the country name
-        this.menuView.addToPath(`${countryName} - ${errorMessage}`, 'error');
+        // Different error display for different game modes
+        if (this.currentGameMode === 'nameThemAll') {
+            // For "Name Them All", just show a flash error in the input field
+            this.menuView.clearInput();
+            
+            // Show the error for a brief moment as a placeholder
+            this.menuView.countryInput.placeholder = `${errorMessage} - Try again`;
+            setTimeout(() => {
+                if (this.menuView.countryInput) {
+                    this.menuView.countryInput.placeholder = 'Type a country name in this region';
+                }
+            }, 1500);
+        } else {
+            // For Country Path, add to the path list
+            this.menuView.addToPath(`${countryName} - ${errorMessage}`, 'error');
+        }
     }
     
     /**
-     * Handles victory condition
+     * Shows the region selection interface for "Name Them All" game
+     */
+    showRegionSelection() {
+        console.log('showRegionSelection called');
+        
+        // Get available regions from the model
+        const regions = this.model.getAvailableRegions();
+        console.log('Available regions:', regions);
+        
+        // Show region selection interface
+        this.menuView.showMenu(false).showRegionSelection(regions, (region) => {
+            console.log('Region selected:', region);
+            this.startNameThemAllGame(region);
+        });
+    }
+    
+    /**
+     * Starts a new "Name Them All" game for the selected region
+     * @param {string} region - The selected region
+     */
+    startNameThemAllGame(region) {
+        console.log(`Starting "Name Them All" game for region: ${region}`);
+        
+        // Set game state
+        this.isGameActive = true;
+        this.currentGameMode = 'nameThemAll';
+        this.selectedRegion = region;
+        
+        // Set the region in the model
+        const regionSet = this.model.setRegion(region);
+        if (!regionSet) {
+            console.error(`Failed to set region ${region} in model`);
+            // Try some alternatives
+            if (region === 'Europe' && this.model.regionCountries.has('Europe')) {
+                console.log('Attempting to manually set region to Europe');
+                this.model.currentRegion = 'Europe';
+            }
+        }
+        
+        // Double-check that the region was set
+        console.log(`Current region in model: ${this.model.currentRegion}`);
+        
+        // Check the countries available in this region
+        const regionCountries = this.model.getCurrentRegionCountries();
+        console.log(`Countries in ${region} (${regionCountries.length}):`, regionCountries);
+        
+        // Update the canvas view's game mode
+        this.canvasView.gameMode = 'nameThemAll';
+        
+        // Clear named countries
+        this.namedCountries.clear();
+        this.model.resetNamedCountries();
+        
+        // Reset country highlights
+        this.model.resetCountryHighlights();
+        
+        // Show the game UI
+        this.menuView.showNameThemAllUI();
+        
+        // Get the country counts for this region
+        const counts = this.model.getRemainingCountsForRegion();
+        
+        // Update the UI with progress
+        this.menuView.updateNameThemAllUI(region, counts.named, counts.total);
+        
+        // Update the map
+        this.canvasView.renderMap(this.model.getAllCountriesForRendering());
+        
+        console.log(`"Name Them All" game ready for region: ${region} with ${counts.total} countries`);
+    }
+    
+    /**
+     * Handles victory for "Name Them All" game
+     * @private
+     */
+    _handleNameThemAllVictory() {
+        this.isGameActive = false;
+        
+        // Get the final stats
+        const counts = this.model.getRemainingCountsForRegion();
+        
+        // Show victory message
+        this.menuView.showVictory('nameThemAll', {
+            named: counts.named,
+            total: counts.total
+        });
+        
+        console.log(`"Name Them All" game completed for ${this.selectedRegion} region with ${counts.named}/${counts.total} countries named`);
+    }
+    
+    /**
+     * Handles victory condition for Country Path game
      * @private
      */
     _handleVictory() {
@@ -225,24 +436,45 @@ export default class GameController {
         const timeTaken = (this.gameStats.endTime - this.gameStats.startTime) / 1000;
         
         // Log game stats
-        console.log(`Game completed in ${timeTaken} seconds with ${this.gameStats.moves} moves and ${this.gameStats.errors} errors`);
+        console.log(`Country Path game completed in ${timeTaken} seconds with ${this.gameStats.moves} moves and ${this.gameStats.errors} errors`);
         
         // Show victory message
-        this.menuView.showVictory();
+        this.menuView.showVictory('countryPath');
     }
     
     /**
      * Resets the current game
      */
     resetGame() {
-        // Reset game state
+        // Reset common game state
         this.isGameActive = false;
-        this.startCountry = null;
-        this.endCountry = null;
-        this.currentPath = [];
+        
+        // Reset based on game mode
+        if (this.currentGameMode === 'nameThemAll') {
+            // Reset Name Them All game state
+            this.selectedRegion = null;
+            this.namedCountries.clear();
+            this.model.resetNamedCountries();
+            
+            // Reset the path list display (restore if hidden)
+            if (this.menuView.pathList) {
+                this.menuView.pathList.style.display = '';
+            }
+        } else {
+            // Reset Country Path game state
+            this.startCountry = null;
+            this.endCountry = null;
+            this.currentPath = [];
+            
+            // Reset UI specific to Country Path
+            this.menuView.clearPath();
+        }
+        
+        // Reset to default game mode
+        this.currentGameMode = 'countryPath';
+        this.canvasView.gameMode = 'countryPath';
         
         // Reset UI
-        this.menuView.clearPath();
         this.menuView.showGameUI(false).showMenu(true);
         
         // Reset country highlights on map
@@ -259,8 +491,13 @@ export default class GameController {
      * @private
      */
     _normalizeCountryName(name) {
-        // Basic normalization - in a production app, this would handle
-        // diacritics, different spellings, etc.
-        return name.trim();
+        if (!name) return '';
+        
+        // Basic normalization - trim and capitalize first letter of each word
+        const trimmed = name.trim();
+        return trimmed
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
     }
 }

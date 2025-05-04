@@ -242,6 +242,72 @@ h1 {
     transition: opacity 0.2s ease;
 }
 
+/* Region selection interface */
+.region-selection {
+    position: absolute;
+    width: 80%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--menu-bg);
+    padding: 30px;
+    border: var(--pixel-border);
+    box-shadow: var(--box-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 150;
+}
+
+.region-selection h2 {
+    font-size: 1.8rem;
+    color: var(--highlight-color);
+    text-shadow: 3px 3px 0px var(--text-shadow);
+    margin-bottom: 15px;
+}
+
+.region-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+}
+
+.region-button {
+    background-color: var(--button-bg);
+    color: white;
+    font-size: 1rem;
+    padding: 12px 20px;
+    margin: 5px;
+}
+
+/* Victory message */
+.victory-message {
+    position: absolute;
+    width: 80%;
+    max-width: 500px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--menu-bg);
+    padding: 30px;
+    border: var(--pixel-border);
+    box-shadow: var(--box-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 150;
+    text-align: center;
+}
+
+.victory-message h2 {
+    font-size: 2rem;
+    color: var(--highlight-color);
+    text-shadow: 3px 3px 0px var(--text-shadow);
+}
+
 /* Helper classes */
 .hidden {
     display: none !important;

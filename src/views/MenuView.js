@@ -18,6 +18,15 @@ export default class MenuView {
         // State management
         this.isMenuVisible = true;
         this.isGameUIVisible = false;
+        this.currentGameMode = 'countryPath'; // Default game mode
+        
+        // Region selection for "Name Them All" mode
+        this.regionSelectionContainer = null;
+        this.selectedRegion = null;
+        
+        // Name Them All stats
+        this.namedCountriesCount = 0;
+        this.totalCountriesCount = 0;
         
         // High contrast mode
         this.isHighContrast = false;
@@ -26,6 +35,12 @@ export default class MenuView {
         this.clickSound = null;
         this.errorSound = null;
         this.successSound = null;
+        
+        // Create Name Them All button if it doesn't exist
+        this._createNameThemAllButton();
+        
+        // After creating the button, initialize event listeners
+        this.nameThemAllButton = document.getElementById('nameThemAllButton');
         
         // Initialize event listeners for menu buttons
         this._initEventListeners();
@@ -43,6 +58,63 @@ export default class MenuView {
                 const event = new CustomEvent('resetGame');
                 document.dispatchEvent(event);
             });
+        }
+        
+        // Name Them All button click handler
+        if (this.nameThemAllButton) {
+            console.log('Adding click listener to Name Them All button');
+            this.nameThemAllButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                console.log('Name Them All button clicked');
+                
+                // Play click sound if available
+                if (this.clickSound) {
+                    this.clickSound.currentTime = 0;
+                    this.clickSound.play().catch(e => console.log('Error playing sound:', e));
+                }
+                
+                // Set game mode
+                this.currentGameMode = 'nameThemAll';
+                
+                // Trigger region selection
+                console.log('Dispatching selectRegion event');
+                const selectRegionEvent = new CustomEvent('selectRegion');
+                document.dispatchEvent(selectRegionEvent);
+            });
+        } else {
+            console.error('Name Them All button not found in DOM');
+        }
+    }
+    
+    /**
+     * Creates the "Name Them All" button if it doesn't already exist
+     * @private
+     */
+    _createNameThemAllButton() {
+        // Check if button already exists in the DOM
+        if (!document.getElementById('nameThemAllButton')) {
+            // Create button
+            const button = document.createElement('button');
+            button.id = 'nameThemAllButton';
+            button.className = 'pixel-button';
+            button.textContent = 'Name Them All';
+            
+            // Add to menu container after the play button
+            if (this.playButton && this.menuContainer) {
+                // Add some spacing
+                const spacer = document.createElement('div');
+                spacer.style.height = '15px';
+                this.menuContainer.insertBefore(spacer, this.playButton.nextSibling);
+                
+                // Add the button after the spacer
+                this.menuContainer.insertBefore(button, spacer.nextSibling);
+                
+                console.log('Created "Name Them All" button');
+            } else {
+                console.error('Could not find play button or menu container to add "Name Them All" button');
+            }
+        } else {
+            console.log('"Name Them All" button already exists');
         }
     }
     
@@ -191,16 +263,28 @@ export default class MenuView {
     
     /**
      * Shows a victory message
+     * @param {string} gameMode - The game mode 'countryPath' or 'nameThemAll'
+     * @param {Object} stats - Game statistics (optional)
      */
-    showVictory() {
+    showVictory(gameMode = 'countryPath', stats = null) {
         // Create victory message
         const victoryEl = document.createElement('div');
         victoryEl.className = 'victory-message';
-        victoryEl.innerHTML = `
-            <h2>Victory!</h2>
-            <p>You found a valid path between the countries!</p>
-            <button id="playAgainBtn" class="pixel-button">Play Again</button>
-        `;
+        
+        // Different message based on game mode
+        if (gameMode === 'nameThemAll') {
+            victoryEl.innerHTML = `
+                <h2>Victory!</h2>
+                <p>You named all ${stats?.total || ''} countries in the ${this.selectedRegion || 'selected'} region!</p>
+                <button id="playAgainBtn" class="pixel-button">Play Again</button>
+            `;
+        } else {
+            victoryEl.innerHTML = `
+                <h2>Victory!</h2>
+                <p>You found a valid path between the countries!</p>
+                <button id="playAgainBtn" class="pixel-button">Play Again</button>
+            `;
+        }
         
         // Append to game container
         document.getElementById('gameContainer').appendChild(victoryEl);
@@ -219,6 +303,69 @@ export default class MenuView {
         if (this.successSound) {
             this.successSound.currentTime = 0;
             this.successSound.play().catch(e => console.log('Error playing sound:', e));
+        }
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Shows the region selection interface for "Name Them All" game
+     * @param {Array} regions - Available regions to choose from
+     * @param {Function} selectionHandler - Function to handle region selection
+     */
+    showRegionSelection(regions, selectionHandler) {
+        // Remove any existing region selection
+        this.removeRegionSelection();
+        
+        // Create region selection container
+        this.regionSelectionContainer = document.createElement('div');
+        this.regionSelectionContainer.className = 'region-selection';
+        this.regionSelectionContainer.innerHTML = `
+            <h2>Choose a Region</h2>
+            <div class="region-buttons"></div>
+        `;
+        
+        const buttonContainer = this.regionSelectionContainer.querySelector('.region-buttons');
+        
+        // Create buttons for each region
+        regions.forEach(region => {
+            const button = document.createElement('button');
+            button.className = 'pixel-button region-button';
+            button.textContent = region;
+            button.dataset.region = region;
+            
+            button.addEventListener('click', () => {
+                this.selectedRegion = region;
+                
+                // Play click sound if available
+                if (this.clickSound) {
+                    this.clickSound.currentTime = 0;
+                    this.clickSound.play().catch(e => console.log('Error playing sound:', e));
+                }
+                
+                // Call the selection handler
+                selectionHandler(region);
+                
+                // Remove region selection UI
+                this.removeRegionSelection();
+            });
+            
+            buttonContainer.appendChild(button);
+        });
+        
+        // Append to game container
+        document.getElementById('gameContainer').appendChild(this.regionSelectionContainer);
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Removes the region selection interface
+     */
+    removeRegionSelection() {
+        if (this.regionSelectionContainer) {
+            this.regionSelectionContainer.remove();
+            this.regionSelectionContainer = null;
         }
         
         return this; // Allow chaining
@@ -258,10 +405,52 @@ export default class MenuView {
                     const countryName = this.countryInput.value.trim();
                     
                     if (countryName) {
-                        handler(countryName);
+                        handler(countryName, this.currentGameMode);
                     }
                 }
             });
+        }
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Updates the UI for "Name Them All" game mode
+     * @param {string} region - Selected region name
+     * @param {number} named - Number of named countries
+     * @param {number} total - Total number of countries in region
+     */
+    updateNameThemAllUI(region, named, total) {
+        this.namedCountriesCount = named;
+        this.totalCountriesCount = total;
+        
+        // Update the game info section
+        if (this.startCountryEl) {
+            this.startCountryEl.textContent = `Region: ${region}`;
+        }
+        
+        if (this.endCountryEl) {
+            this.endCountryEl.textContent = `Progress: ${named}/${total} countries`;
+        }
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Shows the Name Them All UI
+     */
+    showNameThemAllUI() {
+        // Hide path list since we don't need it for this mode
+        if (this.pathList) {
+            this.pathList.style.display = 'none';
+        }
+        
+        // Show game UI
+        this.showGameUI(true);
+        
+        // Set input placeholder
+        if (this.countryInput) {
+            this.countryInput.placeholder = 'Type a country name in this region';
         }
         
         return this; // Allow chaining
