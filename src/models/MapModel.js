@@ -546,12 +546,33 @@ export default class MapModel {
      * @returns {boolean} - True if the region was found and set
      */
     setRegion(region) {
+        console.log(`Setting region to ${region}`);
+        
+        // Check if the region exists directly in our regionCountries map
         if (this.regionCountries.has(region)) {
+            console.log(`Found region ${region} directly in regionCountries`);
             this.currentRegion = region;
             // Reset named countries when changing regions
             this.namedCountries.clear();
             return true;
         }
+        
+        // Special case for metaregions
+        if (region === 'World') {
+            console.log('Setting special World region');
+            this.currentRegion = 'World';
+            this.namedCountries.clear();
+            
+            // If we don't already have World as a region, make sure it's added
+            if (!this.regionCountries.has('World')) {
+                console.log('Adding World region with all countries');
+                this.regionCountries.set('World', [...this.countriesList]);
+            }
+            
+            return true;
+        }
+        
+        console.log(`Failed to set region ${region}`);
         return false;
     }
     
@@ -597,8 +618,37 @@ export default class MapModel {
         // Normalize the input country name
         const normalizedInput = countryName.trim().toLowerCase();
         
-        // Get countries in the current region
-        const regionCountries = this.regionCountries.get(this.currentRegion) || [];
+        // Special handling for World region (contains all countries)
+        if (this.currentRegion === 'World') {
+            console.log(`World region selected, checking if ${countryName} exists in any region`);
+            // For World region, check if the country exists in any region
+            for (const regions of this.regionCountries.values()) {
+                for (const regionCountry of regions) {
+                    if (regionCountry.toLowerCase() === normalizedInput) {
+                        console.log(`Found match for ${countryName} in World region`);
+                        return true;
+                    }
+                }
+            }
+            
+            // Also check if it exists in our countries list
+            for (const countryKey of this.countriesList) {
+                if (countryKey.toLowerCase() === normalizedInput) {
+                    console.log(`Found match for ${countryName} in World region (from countriesList)`);
+                    return true;
+                }
+            }
+            
+            console.log(`No match for ${countryName} in World region`);
+            return false;
+        }
+        
+        // Handle metaregions (like "World" which includes multiple regions)
+        let regionCountries = [];
+        if (this.regionCountries.get(this.currentRegion)) {
+            regionCountries = this.regionCountries.get(this.currentRegion);
+        }
+        
         console.log(`Checking if ${countryName} is in region ${this.currentRegion}`);
         
         // Case-insensitive check
@@ -620,12 +670,56 @@ export default class MapModel {
      * @returns {boolean} - True if the country was valid and marked
      */
     markCountryNamed(countryName) {
+        console.log(`Attempting to mark ${countryName} as named`);
+        
+        // First check if country is in current region and not already named
         if (this.isCountryInCurrentRegion(countryName) && !this.namedCountries.has(countryName)) {
-            this.namedCountries.add(countryName);
+            // Find the exact matching country name from the list (preserving case)
+            let exactCountryName = countryName;
+            
+            // For World region, search all regions for exact match
+            if (this.currentRegion === 'World') {
+                const normalizedInput = countryName.trim().toLowerCase();
+                
+                // Search through all regions for the exact case country name
+                for (const regions of this.regionCountries.values()) {
+                    for (const regionCountry of regions) {
+                        if (regionCountry.toLowerCase() === normalizedInput) {
+                            exactCountryName = regionCountry;
+                            break;
+                        }
+                    }
+                }
+                
+                // Also search the countries list
+                for (const country of this.countriesList) {
+                    if (country.toLowerCase() === normalizedInput) {
+                        exactCountryName = country;
+                        break;
+                    }
+                }
+            } else {
+                // For standard regions, search just that region
+                const normalizedInput = countryName.trim().toLowerCase();
+                const regionCountries = this.regionCountries.get(this.currentRegion) || [];
+                
+                for (const regionCountry of regionCountries) {
+                    if (regionCountry.toLowerCase() === normalizedInput) {
+                        exactCountryName = regionCountry;
+                        break;
+                    }
+                }
+            }
+            
+            console.log(`Adding country ${exactCountryName} to named countries`);
+            this.namedCountries.add(exactCountryName);
+            
             // Also highlight the country on the map
-            this.setCountryHighlight(countryName, true);
+            this.setCountryHighlight(exactCountryName, true);
             return true;
         }
+        
+        console.log(`Failed to mark ${countryName} as named`);
         return false;
     }
     

@@ -176,9 +176,13 @@ export default class GameController {
         countryName = this._normalizeCountryName(countryName);
         console.log(`Input: "${originalInput}" normalized to "${countryName}"`);
         
-        // Use different handling for Name Them All mode since we need case-sensitive matching
+        // Get the current game mode if not explicitly passed
+        gameMode = gameMode || this.currentGameMode;
+        console.log(`Current game mode: ${gameMode}`);
+        
+        // Use different handling for Name Them All mode
         if (gameMode === 'nameThemAll') {
-            this._handleNameThemAllInput(countryName);
+            this._handleNameThemAllInput(originalInput); // Pass original input for "Name Them All"
             return;
         }
         
@@ -239,36 +243,41 @@ export default class GameController {
     _handleNameThemAllInput(countryName) {
         console.log(`Handling input for "Name Them All": "${countryName}"`);
         console.log(`Current region: ${this.selectedRegion}`);
+        
+        // Normalize the country name to improve matching
+        const normalizedCountryName = this._normalizeCountryName(countryName);
+        console.log(`Normalized country name: ${normalizedCountryName}`);
+        
         console.log(`Countries in current region:`, this.model.getCurrentRegionCountries());
         
         // Check if the country is in the current region
-        const isInRegion = this.model.isCountryInCurrentRegion(countryName);
-        console.log(`Is ${countryName} in region? ${isInRegion}`);
+        const isInRegion = this.model.isCountryInCurrentRegion(normalizedCountryName);
+        console.log(`Is ${normalizedCountryName} in region? ${isInRegion}`);
         
         if (!isInRegion) {
             // Check if the country exists at all
-            const country = this.model.getCountryByName(countryName);
+            const country = this.model.getCountryByName(normalizedCountryName);
             if (country) {
-                console.log(`Country ${countryName} exists but not in region ${this.selectedRegion}`);
+                console.log(`Country ${normalizedCountryName} exists but not in region ${this.selectedRegion}`);
             } else {
-                console.log(`Country ${countryName} does not exist in data`);
+                console.log(`Country ${normalizedCountryName} does not exist in data`);
             }
             
-            this._handleInvalidInput(countryName, 'not-in-region');
+            this._handleInvalidInput(normalizedCountryName, 'not-in-region');
             return;
         }
         
         // Check if the country has already been named
-        if (this.namedCountries.has(countryName)) {
-            console.log(`Country ${countryName} already named`);
-            this._handleInvalidInput(countryName, 'already-named');
+        if (this.namedCountries.has(normalizedCountryName)) {
+            console.log(`Country ${normalizedCountryName} already named`);
+            this._handleInvalidInput(normalizedCountryName, 'already-named');
             return;
         }
         
         // Valid country - mark it as named
-        console.log(`Marking ${countryName} as named`);
-        this.namedCountries.add(countryName);
-        this.model.markCountryNamed(countryName);
+        console.log(`Marking ${normalizedCountryName} as named`);
+        this.namedCountries.add(normalizedCountryName);
+        this.model.markCountryNamed(normalizedCountryName);
         
         // Update the UI with progress
         const counts = this.model.getRemainingCountsForRegion();
