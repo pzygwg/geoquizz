@@ -36,11 +36,12 @@ export default class MenuView {
         this.errorSound = null;
         this.successSound = null;
         
-        // Create Name Them All button if it doesn't exist
+        // Create game mode buttons if they don't exist
         this._createNameThemAllButton();
         
-        // After creating the button, initialize event listeners
+        // After creating the buttons, initialize event listeners
         this.nameThemAllButton = document.getElementById('nameThemAllButton');
+        this.findPlaceButton = document.getElementById('findPlaceButton');
         
         // Initialize event listeners for menu buttons
         this._initEventListeners();
@@ -84,14 +85,39 @@ export default class MenuView {
         } else {
             console.error('Name Them All button not found in DOM');
         }
+        
+        // Find the Place button click handler
+        if (this.findPlaceButton) {
+            console.log('Adding click listener to Find the Place button');
+            this.findPlaceButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                console.log('Find the Place button clicked');
+                
+                // Play click sound if available
+                if (this.clickSound) {
+                    this.clickSound.currentTime = 0;
+                    this.clickSound.play().catch(e => console.log('Error playing sound:', e));
+                }
+                
+                // Set game mode
+                this.currentGameMode = 'findPlace';
+                
+                // Trigger game start event
+                console.log('Dispatching startFindPlace event');
+                const startFindPlaceEvent = new CustomEvent('startFindPlace');
+                document.dispatchEvent(startFindPlaceEvent);
+            });
+        } else {
+            console.error('Find the Place button not found in DOM');
+        }
     }
     
     /**
-     * Creates the "Name Them All" button if it doesn't already exist
+     * Creates the game mode buttons if they don't already exist
      * @private
      */
     _createNameThemAllButton() {
-        // Check if button already exists in the DOM
+        // Add the "Name Them All" button
         if (!document.getElementById('nameThemAllButton')) {
             // Create button
             const button = document.createElement('button');
@@ -115,6 +141,33 @@ export default class MenuView {
             }
         } else {
             console.log('"Name Them All" button already exists');
+        }
+        
+        // Add the "Find the Place" button
+        if (!document.getElementById('findPlaceButton')) {
+            // Create button
+            const button = document.createElement('button');
+            button.id = 'findPlaceButton';
+            button.className = 'pixel-button';
+            button.textContent = 'Find the Place';
+            
+            // Add to menu container after the Name Them All button
+            const nameThemAllButton = document.getElementById('nameThemAllButton');
+            if (nameThemAllButton && this.menuContainer) {
+                // Add some spacing
+                const spacer = document.createElement('div');
+                spacer.style.height = '15px';
+                this.menuContainer.insertBefore(spacer, nameThemAllButton.nextSibling);
+                
+                // Add the button after the spacer
+                this.menuContainer.insertBefore(button, spacer.nextSibling);
+                
+                console.log('Created "Find the Place" button');
+            } else {
+                console.error('Could not find Name Them All button or menu container to add "Find the Place" button');
+            }
+        } else {
+            console.log('"Find the Place" button already exists');
         }
     }
     
@@ -451,6 +504,89 @@ export default class MenuView {
         // Set input placeholder
         if (this.countryInput) {
             this.countryInput.placeholder = 'Type a country name in this region';
+        }
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Shows the Find the Place game UI
+     * @param {number} currentRound - Current round number
+     * @param {number} totalRounds - Total number of rounds
+     */
+    showFindPlaceUI(currentRound, totalRounds) {
+        // Hide path list since we don't need it for this mode
+        if (this.pathList) {
+            this.pathList.style.display = 'none';
+        }
+        
+        // Hide country input field if visible
+        if (this.countryInput) {
+            this.countryInput.style.display = 'none';
+        }
+        
+        // Update the game info section
+        if (this.startCountryEl) {
+            this.startCountryEl.textContent = `Round: ${currentRound}/${totalRounds}`;
+        }
+        
+        if (this.endCountryEl) {
+            this.endCountryEl.textContent = `Click on the map to place your pin`;
+        }
+        
+        // Show game UI
+        this.showGameUI(true);
+        
+        // Create instruction element
+        const instruction = document.createElement('div');
+        instruction.id = 'findPlaceInstruction';
+        instruction.className = 'find-place-instruction';
+        instruction.textContent = 'Where is this place? Click on the map to place your pin.';
+        
+        // Add to game UI if not already there
+        if (!document.getElementById('findPlaceInstruction') && this.gameUIContainer) {
+            this.gameUIContainer.appendChild(instruction);
+        }
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Updates the Find the Place game UI after a guess
+     * @param {Object} guessResult - Result of the player's guess
+     */
+    updateFindPlaceUI(guessResult) {
+        if (!guessResult) return this;
+        
+        // Update the game info section with score
+        if (this.endCountryEl) {
+            this.endCountryEl.textContent = `Score: ${guessResult.score} (${Math.round(guessResult.distance)} km)`;
+        }
+        
+        // Update instruction
+        const instruction = document.getElementById('findPlaceInstruction');
+        if (instruction) {
+            instruction.textContent = 'Click "Continue" to proceed to the next round.';
+        }
+        
+        // Add continue button if not already there
+        if (!document.getElementById('continueButton') && this.gameUIContainer) {
+            const continueBtn = document.createElement('button');
+            continueBtn.id = 'continueButton';
+            continueBtn.className = 'pixel-button';
+            continueBtn.textContent = 'Continue';
+            
+            // Add event listener
+            continueBtn.addEventListener('click', () => {
+                // Remove the button
+                continueBtn.remove();
+                
+                // Dispatch continue event
+                const continueEvent = new CustomEvent('continueFindPlace');
+                document.dispatchEvent(continueEvent);
+            });
+            
+            this.gameUIContainer.appendChild(continueBtn);
         }
         
         return this; // Allow chaining

@@ -3,6 +3,9 @@
  * Orchestrates the game flow, manages user input, and updates the Model & View
  */
 
+import PlaceFinderModel from '../models/PlaceFinderModel.js';
+import ImageView from '../views/ImageView.js';
+
 export default class GameController {
     /**
      * Creates a new GameController
@@ -34,6 +37,10 @@ export default class GameController {
         this.selectedRegion = null;
         this.regionCountries = [];
         this.namedCountries = new Set();
+        
+        // Find the Place game state
+        this.placeFinderModel = new PlaceFinderModel();
+        this.imageView = null; // Will be initialized when needed
         
         // Bind event handlers
         this._bindEventListeners();
@@ -89,6 +96,22 @@ export default class GameController {
         document.addEventListener('selectRegion', () => {
             console.log('selectRegion event received, showing region selection');
             this.showRegionSelection();
+        });
+        
+        // Listen for Find the Place game events
+        document.addEventListener('startFindPlace', () => {
+            console.log('startFindPlace event received, starting Find the Place game');
+            this.startFindPlaceGame();
+        });
+        
+        document.addEventListener('pinPlaced', (event) => {
+            console.log('pinPlaced event received, handling pin placement');
+            this._handlePinPlaced(event.detail.x, event.detail.y);
+        });
+        
+        document.addEventListener('continueFindPlace', () => {
+            console.log('continueFindPlace event received, continuing to next round');
+            this._startNextFindPlaceRound();
         });
     }
     
@@ -452,6 +475,126 @@ export default class GameController {
     }
     
     /**
+     * Starts the "Find the Place" game
+     */
+    async startFindPlaceGame() {
+        // Initialize the Find the Place game
+        this.isGameActive = true;
+        this.currentGameMode = 'findPlace';
+        this.canvasView.gameMode = 'findPlace';
+        
+        // Create ImageView if it doesn't exist
+        if (!this.imageView) {
+            this.imageView = new ImageView('imageContainer');
+        }
+        
+        // Load places data
+        const dataLoaded = await this.placeFinderModel.loadPlacesData();
+        if (!dataLoaded) {
+            console.error("Could not load places data");
+            alert('Error loading places data. Please try again.');
+            return;
+        }
+        
+        // Reset the game model
+        this.placeFinderModel.resetGame();
+        
+        // Hide menu and show game UI
+        this.menuView.showMenu(false);
+        
+        // Start the first round
+        this._startNextFindPlaceRound();
+    }
+    
+    /**
+     * Starts the next round of the Find the Place game
+     * @private
+     */
+    _startNextFindPlaceRound() {
+        // Get the next place
+        const currentPlace = this.placeFinderModel.startNewRound();
+        
+        // Check if the game is complete
+        if (!currentPlace) {
+            this._handleFindPlaceGameComplete();
+            return;
+        }
+        
+        // Show the place image
+        const gameState = this.placeFinderModel.getGameState();
+        this.imageView.showImage(currentPlace, gameState.currentRound, gameState.totalRounds);
+        
+        // Update the UI
+        this.menuView.showFindPlaceUI(gameState.currentRound, gameState.totalRounds);
+        
+        // Enable pin placement on the map
+        this.canvasView.enablePinPlacement();
+        
+        // Reset any existing pins
+        this.canvasView.resetPins();
+    }
+    
+    /**
+     * Handles pin placement for the Find the Place game
+     * @param {number} x - X coordinate on the map
+     * @param {number} y - Y coordinate on the map
+     * @private
+     */
+    _handlePinPlaced(x, y) {
+        // Convert canvas coordinates to latitude/longitude
+        const mapWidth = parseFloat(this.canvasView.canvas.dataset.mapWidth || 4000);
+        const mapHeight = parseFloat(this.canvasView.canvas.dataset.mapHeight || 2000);
+        
+        const coordinates = this.placeFinderModel.canvasPointToCoordinates(x, y, mapWidth, mapHeight);
+        
+        // Record the guess and get results
+        const result = this.placeFinderModel.recordPlayerGuess(
+            coordinates.latitude, 
+            coordinates.longitude
+        );
+        
+        if (!result) {
+            console.error("Failed to record guess");
+            return;
+        }
+        
+        // Get the current place data
+        const currentPlace = this.placeFinderModel.currentPlace;
+        
+        // Show the actual location on the map
+        const actualPoint = this.placeFinderModel.coordinatesToCanvasPoint(
+            currentPlace.coordinates.latitude,
+            currentPlace.coordinates.longitude,
+            mapWidth,
+            mapHeight
+        );
+        
+        // Set the actual pin on the map
+        this.canvasView.setActualPin(actualPoint.x, actualPoint.y);
+        
+        // Update the image view with results
+        this.imageView.showResult(currentPlace, result);
+        
+        // Update the menu view with score
+        this.menuView.updateFindPlaceUI(result);
+    }
+    
+    /**
+     * Handles the completion of the Find the Place game
+     * @private
+     */
+    _handleFindPlaceGameComplete() {
+        // Get final game state
+        const gameState = this.placeFinderModel.getGameState();
+        
+        // Show final results
+        this.imageView.showFinalResults(gameState);
+        
+        // End the game
+        this.isGameActive = false;
+    }
+    
+    /**
      * Resets the current game
      */
     resetGame() {
@@ -468,6 +611,33 @@ export default class GameController {
             // Reset the path list display (restore if hidden)
             if (this.menuView.pathList) {
                 this.menuView.pathList.style.display = '';
+            }
+        } else if (this.currentGameMode === 'findPlace') {
+            // Reset Find the Place game state
+            this.placeFinderModel.resetGame();
+            
+            // Hide the image view
+            if (this.imageView) {
+                this.imageView.hide();
+            }
+            
+            // Reset pins
+            this.canvasView.resetPins();
+            
+            // Remove any Find the Place specific UI elements
+            const instruction = document.getElementById('findPlaceInstruction');
+            if (instruction) {
+                instruction.remove();
+            }
+            
+            const continueButton = document.getElementById('continueButton');
+            if (continueButton) {
+                continueButton.remove();
+            }
+            
+            // Show country input again if it was hidden
+            if (this.menuView.countryInput) {
+                this.menuView.countryInput.style.display = '';
             }
         } else {
             // Reset Country Path game state

@@ -29,9 +29,17 @@ export default class CanvasView {
         this.startEndFill = '#55d688'; // Color for start/end countries
         this.hoverFill = '#ffcc66'; // Color for hovered countries
         this.namedFill = '#ffcc00'; // Yellow color for named countries in Name Them All
+        this.pinFill = '#ff3333'; // Red color for pins in Find the Place
+        this.actualPinFill = '#33cc33'; // Green color for actual location pins
         
         // Game mode
         this.gameMode = 'countryPath'; // Default game mode
+        
+        // Find the Place game state
+        this.isPlacingPin = false;
+        this.playerPin = null;
+        this.actualPin = null;
+        this.pinRadius = 8; // Size of pins
         
         // Initialize event listeners
         this._initEventListeners();
@@ -56,8 +64,51 @@ export default class CanvasView {
         
         // Handle panning
         this.canvas.addEventListener('mousedown', (event) => this._handleMouseDown(event));
-        this.canvas.addEventListener('mouseup', () => this._handleMouseUp());
+        this.canvas.addEventListener('mouseup', (event) => {
+            // Handle click for "Find the Place" mode
+            if (this.gameMode === 'findPlace' && this.isPlacingPin && !this.isDragging) {
+                this._handleMapClick(event);
+            }
+            
+            // Regular mouse up handling
+            this._handleMouseUp();
+        });
         this.canvas.addEventListener('mouseleave', () => this._handleMouseUp());
+    }
+    
+    /**
+     * Handles click on the map for pin placement
+     * @param {MouseEvent} event - Mouse event
+     * @private
+     */
+    _handleMapClick(event) {
+        if (!this.isPlacingPin || this.isDragging) return;
+        
+        // Get mouse position in canvas coordinates
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
+        // Convert to map coordinates
+        const mapCoords = this._screenToMapCoords(x, y);
+        
+        // Set player pin
+        this.playerPin = {
+            x: mapCoords.x,
+            y: mapCoords.y
+        };
+        
+        // Dispatch pin placed event
+        const pinEvent = new CustomEvent('pinPlaced', { 
+            detail: { x: mapCoords.x, y: mapCoords.y }
+        });
+        document.dispatchEvent(pinEvent);
+        
+        // Disable further pin placement for this round
+        this.isPlacingPin = false;
+        
+        // Redraw the map with the pin
+        this.redraw();
     }
     
     /**
@@ -455,12 +506,126 @@ export default class CanvasView {
             this.preRenderedMap.height * currentScale
         );
         
+        // Draw pins for Find the Place mode
+        if (this.gameMode === 'findPlace') {
+            this._drawPins(currentScale);
+        }
+        
         // Store map position and scale for hit detection
         this.canvas.dataset.mapX = this.offsetX;
         this.canvas.dataset.mapY = this.offsetY;
         this.canvas.dataset.mapScale = currentScale;
         this.canvas.dataset.mapWidth = this.preRenderedMap.width;
         this.canvas.dataset.mapHeight = this.preRenderedMap.height;
+    }
+    
+    /**
+     * Draws pins on the map for Find the Place game
+     * @param {number} scale - Current map scale factor
+     * @private
+     */
+    _drawPins(scale) {
+        // Draw player's pin if it exists
+        if (this.playerPin) {
+            // Draw pin
+            this.ctx.fillStyle = this.pinFill;
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            
+            // Scale pin with zoom level
+            const radius = this.pinRadius * (1 + (this.zoomLevel * 0.2));
+            
+            // Draw circle for pin with drop shadow
+            this.ctx.beginPath();
+            this.ctx.arc(
+                this.playerPin.x * scale, 
+                this.playerPin.y * scale, 
+                radius,
+                0, Math.PI * 2
+            );
+            this.ctx.fill();
+            this.ctx.stroke();
+            
+            // Draw pulsing ring around player pin
+            const pulseSize = Math.sin(Date.now() * 0.005) * 2 + 5; // Pulsing effect
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            this.ctx.lineWidth = 1.5;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                this.playerPin.x * scale, 
+                this.playerPin.y * scale, 
+                radius + pulseSize,
+                0, Math.PI * 2
+            );
+            this.ctx.stroke();
+        }
+        
+        // Draw actual location pin if it exists
+        if (this.actualPin) {
+            // Draw pin
+            this.ctx.fillStyle = this.actualPinFill;
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            
+            // Scale pin with zoom level
+            const radius = this.pinRadius * (1 + (this.zoomLevel * 0.2));
+            
+            // Draw circle for pin
+            this.ctx.beginPath();
+            this.ctx.arc(
+                this.actualPin.x * scale, 
+                this.actualPin.y * scale, 
+                radius,
+                0, Math.PI * 2
+            );
+            this.ctx.fill();
+            this.ctx.stroke();
+            
+            // Draw line connecting player pin and actual pin if both exist
+            if (this.playerPin) {
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 1.5;
+                this.ctx.setLineDash([5, 3]); // Dashed line
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.playerPin.x * scale, this.playerPin.y * scale);
+                this.ctx.lineTo(this.actualPin.x * scale, this.actualPin.y * scale);
+                this.ctx.stroke();
+                
+                this.ctx.setLineDash([]); // Reset line style
+            }
+        }
+    }
+    
+    /**
+     * Enables pin placement mode
+     */
+    enablePinPlacement() {
+        this.isPlacingPin = true;
+        this.playerPin = null;
+        this.actualPin = null;
+        this.canvas.style.cursor = 'crosshair';
+    }
+    
+    /**
+     * Sets the actual pin location (correct answer)
+     * @param {number} x - X coordinate on map
+     * @param {number} y - Y coordinate on map
+     */
+    setActualPin(x, y) {
+        this.actualPin = { x, y };
+        this.redraw();
+    }
+    
+    /**
+     * Reset pins for new round
+     */
+    resetPins() {
+        this.playerPin = null;
+        this.actualPin = null;
+        this.isPlacingPin = false;
+        this.canvas.style.cursor = 'grab';
+        this.redraw();
     }
     
     /**

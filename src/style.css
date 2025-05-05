@@ -18,6 +18,8 @@
     --button-bg: #ff6b6b;
     --button-shadow: #983f3f;
     --text-shadow: #000000;
+    --pin-color: #ff3333;
+    --actual-pin-color: #33cc33;
     
     /* Border styling */
     --pixel-border: 4px solid #000000;
@@ -369,6 +371,138 @@ h1 {
     #menuContainer {
         padding: 15px;
     }
+}
+
+/* Image Container for Find the Place game */
+#imageContainer {
+    position: fixed;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    background-color: var(--menu-bg);
+    border: var(--pixel-border);
+    box-shadow: var(--box-shadow);
+    padding: 15px;
+    z-index: 50;
+    width: 300px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.image-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.place-image {
+    width: 100%;
+    height: auto;
+    border: 3px solid black;
+    object-fit: cover;
+    max-height: 300px;
+}
+
+.image-caption {
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
+    padding: 10px;
+    background-color: var(--secondary-bg);
+    border: 2px solid black;
+}
+
+.round-indicator {
+    font-size: 0.7rem;
+    color: var(--highlight-color);
+    margin-top: 8px;
+}
+
+.result-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 0.7rem;
+    width: 100%;
+}
+
+.final-results {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.total-score {
+    font-size: 1.2rem;
+    color: var(--highlight-color);
+    margin: 15px 0;
+}
+
+.rounds-summary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.round-result {
+    background-color: var(--secondary-bg);
+    padding: 10px;
+    border: 2px solid black;
+}
+
+.round-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.8rem;
+}
+
+.round-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+}
+
+.find-place-instruction {
+    font-size: 0.8rem;
+    background-color: var(--secondary-bg);
+    padding: 10px;
+    margin-top: 10px;
+    border: 2px solid black;
+    text-align: center;
+}
+
+/* Animation classes */
+.fade-in {
+    animation: fadeIn 0.5s forwards;
+}
+
+.fade-out {
+    animation: fadeOut 0.3s forwards;
+}
+
+.highlight {
+    animation: highlight 1s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(10px); }
+}
+
+@keyframes highlight {
+    0%, 100% { box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+    50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
 }
 
 /* Hide SVG object used only for data extraction */
