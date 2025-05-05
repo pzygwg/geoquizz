@@ -134,13 +134,20 @@ export default class CanvasView {
         // Convert to map coordinates
         const mapCoords = this._screenToMapCoords(canvasX, canvasY);
         
-        // Find which country the mouse is over
-        const hoveredCountry = this._getHoveredCountry(mapCoords.x, mapCoords.y);
+        // Find which country the mouse is over and its selected state
+        const hoveredCountryInfo = this._getHoveredCountryInfo(mapCoords.x, mapCoords.y);
         
         // Update tooltip display
-        if (hoveredCountry) {
+        if (hoveredCountryInfo) {
             this.tooltip.style.opacity = 1;
-            this.tooltipText.innerText = hoveredCountry;
+            
+            // If in game mode and country not yet discovered, show "?" instead of name
+            if ((this.gameMode === 'nameThemAll' && !hoveredCountryInfo.selected) || 
+                (this.gameMode === 'countryPath' && !hoveredCountryInfo.isEndpoint && !hoveredCountryInfo.selected)) {
+                this.tooltipText.innerText = "?";
+            } else {
+                this.tooltipText.innerText = hoveredCountryInfo.name;
+            }
         } else {
             this.tooltip.style.opacity = 0;
         }
@@ -162,13 +169,13 @@ export default class CanvasView {
     }
     
     /**
-     * Gets the country at a given point using the hit map
+     * Gets the country and its state at a given point using the hit map
      * @param {number} x - X coordinate on the map
      * @param {number} y - Y coordinate on the map
-     * @returns {string|null} - Country name or null if none found
+     * @returns {Object|null} - Country info or null if none found
      * @private
      */
-    _getHoveredCountry(x, y) {
+    _getHoveredCountryInfo(x, y) {
         // Check if we have a hit map
         if (!this.hitCanvas) {
             return null;
@@ -184,12 +191,40 @@ export default class CanvasView {
             // Convert pixel color to ID
             const colorKey = `${pixel[0]},${pixel[1]},${pixel[2]}`;
             
-            // Look up country by color key
-            return this.countryHitMap.get(colorKey) || null;
+            // Look up country name by color key
+            const countryName = this.countryHitMap.get(colorKey);
+            
+            if (!countryName) return null;
+            
+            // Look up country state from countries map
+            const countryIndex = this.countryStateMap.get(countryName);
+            
+            if (countryIndex !== undefined) {
+                return {
+                    name: countryName,
+                    selected: this.countriesState[countryIndex].selected,
+                    isEndpoint: this.countriesState[countryIndex].isStart || this.countriesState[countryIndex].isEnd
+                };
+            }
+            
+            // If we don't have state info, just return the name
+            return { name: countryName, selected: false, isEndpoint: false };
         } catch (e) {
             // This happens if the point is outside the canvas
             return null;
         }
+    }
+    
+    /**
+     * Gets just the country name at a given point (for backward compatibility)
+     * @param {number} x - X coordinate on the map
+     * @param {number} y - Y coordinate on the map
+     * @returns {string|null} - Country name or null if none found
+     * @private
+     */
+    _getHoveredCountry(x, y) {
+        const info = this._getHoveredCountryInfo(x, y);
+        return info ? info.name : null;
     }
     
     /**
@@ -284,6 +319,8 @@ export default class CanvasView {
         
         // Clear the hit map
         this.countryHitMap = new Map();
+        this.countryStateMap = new Map();
+        this.countriesState = countries;
         
         // Enable high-quality image scaling
         mapCtx.imageSmoothingEnabled = true;
@@ -300,6 +337,9 @@ export default class CanvasView {
                 
                 // Store country name by color key for hit testing
                 this.countryHitMap.set(colorKey, country.name);
+                
+                // Store index for state lookup
+                this.countryStateMap.set(country.name, index);
                 
                 // Choose fill color based on country state and game mode
                 if (this.gameMode === 'nameThemAll') {
