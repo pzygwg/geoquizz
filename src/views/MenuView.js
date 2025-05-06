@@ -548,6 +548,33 @@ export default class MenuView {
             this.gameUIContainer.appendChild(instruction);
         }
         
+        // Add pin mode toggle button if not already there
+        if (!document.getElementById('pinModeToggle') && this.gameUIContainer) {
+            const pinModeBtn = document.createElement('button');
+            pinModeBtn.id = 'pinModeToggle';
+            pinModeBtn.className = 'pixel-button pin-mode-button';
+            pinModeBtn.textContent = 'Toggle Pin Mode';
+            
+            // Add event listener
+            pinModeBtn.addEventListener('click', () => {
+                // Dispatch toggle pin mode event
+                const togglePinModeEvent = new CustomEvent('togglePinMode');
+                document.dispatchEvent(togglePinModeEvent);
+                
+                // Update button appearance based on pin mode state
+                const isPinMode = pinModeBtn.classList.contains('active');
+                if (isPinMode) {
+                    pinModeBtn.classList.remove('active');
+                    pinModeBtn.textContent = 'Toggle Pin Mode';
+                } else {
+                    pinModeBtn.classList.add('active');
+                    pinModeBtn.textContent = 'Pin Mode Active';
+                }
+            });
+            
+            this.gameUIContainer.appendChild(pinModeBtn);
+        }
+        
         return this; // Allow chaining
     }
     
@@ -586,7 +613,13 @@ export default class MenuView {
                 document.dispatchEvent(continueEvent);
             });
             
-            this.gameUIContainer.appendChild(continueBtn);
+            // Maintain pin mode button position - add the continue button before it
+            const pinModeBtn = document.getElementById('pinModeToggle');
+            if (pinModeBtn) {
+                this.gameUIContainer.insertBefore(continueBtn, pinModeBtn);
+            } else {
+                this.gameUIContainer.appendChild(continueBtn);
+            }
         }
         
         return this; // Allow chaining

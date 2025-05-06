@@ -477,6 +477,26 @@ h1 {
     text-align: center;
 }
 
+/* Pin Mode Button */
+.pin-mode-button {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    padding: 8px 15px;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+    border: 2px solid black;
+    float: right;
+}
+
+.pin-mode-button.active {
+    background-color: var(--pin-color);
+}
+
+/* Crosshair cursor for pin mode */
+#mapCanvas.pin-mode {
+    cursor: crosshair;
+}
+
 /* Animation classes */
 .fade-in {
     animation: fadeIn 0.5s forwards;
@@ -503,6 +523,11 @@ h1 {
 @keyframes highlight {
     0%, 100% { box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
     50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+}
+
+/* Continue button */
+#continueButton {
+    float: right;
 }
 
 /* Hide SVG object used only for data extraction */

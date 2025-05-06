@@ -113,6 +113,26 @@ export default class GameController {
             console.log('continueFindPlace event received, continuing to next round');
             this._startNextFindPlaceRound();
         });
+        
+        // Listen for pin mode toggle event
+        document.addEventListener('togglePinMode', () => {
+            console.log('togglePinMode event received');
+            if (this.currentGameMode === 'findPlace') {
+                const isPinMode = this.canvasView.togglePinMode();
+                
+                // Update button appearance
+                const pinModeBtn = document.getElementById('pinModeToggle');
+                if (pinModeBtn) {
+                    if (isPinMode) {
+                        pinModeBtn.classList.add('active');
+                        pinModeBtn.textContent = 'Pin Mode Active';
+                    } else {
+                        pinModeBtn.classList.remove('active');
+                        pinModeBtn.textContent = 'Toggle Pin Mode';
+                    }
+                }
+            }
+        });
     }
     
     /**
@@ -511,14 +531,19 @@ export default class GameController {
      * @private
      */
     _startNextFindPlaceRound() {
+        console.log("Starting next Find the Place round");
+        
         // Get the next place
         const currentPlace = this.placeFinderModel.startNewRound();
         
         // Check if the game is complete
         if (!currentPlace) {
+            console.log("Game is complete - no more places available");
             this._handleFindPlaceGameComplete();
             return;
         }
+        
+        console.log("Current place:", currentPlace.name);
         
         // Show the place image
         const gameState = this.placeFinderModel.getGameState();
@@ -528,10 +553,24 @@ export default class GameController {
         this.menuView.showFindPlaceUI(gameState.currentRound, gameState.totalRounds);
         
         // Enable pin placement on the map
+        console.log("Enabling pin placement");
         this.canvasView.enablePinPlacement();
+        console.log("Pin placement enabled:", this.canvasView.isPlacingPin);
         
         // Reset any existing pins
         this.canvasView.resetPins();
+        
+        // Update pin mode button state if it exists
+        const pinModeBtn = document.getElementById('pinModeToggle');
+        if (pinModeBtn) {
+            if (this.canvasView.isPinMode) {
+                pinModeBtn.classList.add('active');
+                pinModeBtn.textContent = 'Pin Mode Active';
+            } else {
+                pinModeBtn.classList.remove('active');
+                pinModeBtn.textContent = 'Toggle Pin Mode';
+            }
+        }
     }
     
     /**
@@ -541,11 +580,16 @@ export default class GameController {
      * @private
      */
     _handlePinPlaced(x, y) {
+        console.log("_handlePinPlaced called with coordinates:", x, y);
+        
         // Convert canvas coordinates to latitude/longitude
         const mapWidth = parseFloat(this.canvasView.canvas.dataset.mapWidth || 4000);
         const mapHeight = parseFloat(this.canvasView.canvas.dataset.mapHeight || 2000);
         
+        console.log("Map dimensions:", mapWidth, mapHeight);
+        
         const coordinates = this.placeFinderModel.canvasPointToCoordinates(x, y, mapWidth, mapHeight);
+        console.log("Converted to lat/long:", coordinates.latitude, coordinates.longitude);
         
         // Record the guess and get results
         const result = this.placeFinderModel.recordPlayerGuess(
@@ -558,6 +602,8 @@ export default class GameController {
             return;
         }
         
+        console.log("Guess recorded:", result);
+        
         // Get the current place data
         const currentPlace = this.placeFinderModel.currentPlace;
         
@@ -568,6 +614,8 @@ export default class GameController {
             mapWidth,
             mapHeight
         );
+        
+        console.log("Actual location point:", actualPoint.x, actualPoint.y);
         
         // Set the actual pin on the map
         this.canvasView.setActualPin(actualPoint.x, actualPoint.y);
@@ -621,7 +669,8 @@ export default class GameController {
                 this.imageView.hide();
             }
             
-            // Reset pins
+            // Reset pins and pin mode
+            this.canvasView.togglePinMode(false);
             this.canvasView.resetPins();
             
             // Remove any Find the Place specific UI elements
@@ -633,6 +682,11 @@ export default class GameController {
             const continueButton = document.getElementById('continueButton');
             if (continueButton) {
                 continueButton.remove();
+            }
+            
+            const pinModeToggle = document.getElementById('pinModeToggle');
+            if (pinModeToggle) {
+                pinModeToggle.remove();
             }
             
             // Show country input again if it was hidden

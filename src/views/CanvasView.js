@@ -37,6 +37,7 @@ export default class CanvasView {
         
         // Find the Place game state
         this.isPlacingPin = false;
+        this.isPinMode = false; // Whether pin mode is active (disables grabbing)
         this.playerPin = null;
         this.actualPin = null;
         this.pinRadius = 8; // Size of pins
@@ -65,9 +66,25 @@ export default class CanvasView {
         // Handle panning
         this.canvas.addEventListener('mousedown', (event) => this._handleMouseDown(event));
         this.canvas.addEventListener('mouseup', (event) => {
-            // Handle click for "Find the Place" mode
-            if (this.gameMode === 'findPlace' && this.isPlacingPin && !this.isDragging) {
-                this._handleMapClick(event);
+            console.log("mouseup event", {
+                gameMode: this.gameMode,
+                isPlacingPin: this.isPlacingPin,
+                isPinMode: this.isPinMode,
+                isDragging: this.isDragging
+            });
+            
+            // Handle click for "Find the Place" mode - simplified condition
+            // In pin mode, we always handle the click
+            // In regular mode, only handle if not dragging
+            if (this.gameMode === 'findPlace' && this.isPlacingPin) {
+                if (this.isPinMode || !this.isDragging) {
+                    console.log("Calling _handleMapClick from mouseup");
+                    this._handleMapClick(event);
+                } else {
+                    console.log("Not calling _handleMapClick - dragging and not in pin mode");
+                }
+            } else {
+                console.log("Not calling _handleMapClick - not in Find the Place mode or pin placement not enabled");
             }
             
             // Regular mouse up handling
@@ -82,15 +99,27 @@ export default class CanvasView {
      * @private
      */
     _handleMapClick(event) {
-        if (!this.isPlacingPin || this.isDragging) return;
+        console.log("_handleMapClick called");
+        console.log("isPlacingPin:", this.isPlacingPin);
+        console.log("isDragging:", this.isDragging);
+        console.log("isPinMode:", this.isPinMode);
+        
+        // In pin mode we always allow placement, otherwise check if we're not dragging
+        if (!this.isPlacingPin || (!this.isPinMode && this.isDragging)) {
+            console.log("Early return - pin placement not allowed");
+            return;
+        }
         
         // Get mouse position in canvas coordinates
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
+        console.log("Canvas coordinates:", x, y);
+        
         // Convert to map coordinates
         const mapCoords = this._screenToMapCoords(x, y);
+        console.log("Map coordinates:", mapCoords.x, mapCoords.y);
         
         // Set player pin
         this.playerPin = {
@@ -102,6 +131,7 @@ export default class CanvasView {
         const pinEvent = new CustomEvent('pinPlaced', { 
             detail: { x: mapCoords.x, y: mapCoords.y }
         });
+        console.log("Dispatching pinPlaced event with coordinates:", mapCoords.x, mapCoords.y);
         document.dispatchEvent(pinEvent);
         
         // Disable further pin placement for this round
@@ -154,8 +184,8 @@ export default class CanvasView {
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         
-        // Handle panning
-        if (this.isDragging) {
+        // Handle panning (only if not in pin mode)
+        if (this.isDragging && !(this.isPinMode && this.gameMode === 'findPlace')) {
             const dx = event.clientX - this.lastMouseX;
             const dy = event.clientY - this.lastMouseY;
             this.offsetX += dx;
@@ -324,11 +354,18 @@ export default class CanvasView {
     }
     
     /**
-     * Handles mouse down event for panning
+     * Handles mouse down event for panning or pin placement
      * @param {MouseEvent} event - Mouse event
      * @private
      */
     _handleMouseDown(event) {
+        // If in pin mode, don't enable dragging
+        if (this.isPinMode && this.gameMode === 'findPlace') {
+            // In pin mode, clicking will handle placement in mouseup event
+            return;
+        }
+        
+        // Regular dragging behavior
         this.isDragging = true;
         this.lastMouseX = event.clientX;
         this.lastMouseY = event.clientY;
@@ -604,7 +641,7 @@ export default class CanvasView {
         this.isPlacingPin = true;
         this.playerPin = null;
         this.actualPin = null;
-        this.canvas.style.cursor = 'crosshair';
+        this.canvas.style.cursor = this.isPinMode ? 'crosshair' : 'grab';
     }
     
     /**
@@ -621,11 +658,45 @@ export default class CanvasView {
      * Reset pins for new round
      */
     resetPins() {
+        console.log("Resetting pins");
         this.playerPin = null;
         this.actualPin = null;
-        this.isPlacingPin = false;
-        this.canvas.style.cursor = 'grab';
+        
+        // Don't reset isPlacingPin here - it's controlled by enablePinPlacement
+        
+        // Update cursor based on pin mode
+        this.canvas.style.cursor = this.isPinMode ? 'crosshair' : 'grab';
         this.redraw();
+        
+        console.log("After resetPins: isPlacingPin =", this.isPlacingPin);
+    }
+    
+    /**
+     * Toggles pin mode on/off
+     * @param {boolean} enable - Whether to enable pin mode
+     * @returns {boolean} - The new pin mode state
+     */
+    togglePinMode(enable) {
+        this.isPinMode = enable !== undefined ? enable : !this.isPinMode;
+        
+        // Update cursor and CSS class
+        if (this.isPinMode) {
+            this.canvas.style.cursor = 'crosshair';
+            this.canvas.classList.add('pin-mode');
+        } else {
+            this.canvas.style.cursor = 'grab';
+            this.canvas.classList.remove('pin-mode');
+        }
+        
+        return this.isPinMode;
+    }
+    
+    /**
+     * Gets current pin mode state
+     * @returns {boolean} - Whether pin mode is active
+     */
+    getPinMode() {
+        return this.isPinMode;
     }
     
     /**
