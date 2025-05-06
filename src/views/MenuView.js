@@ -555,21 +555,13 @@ export default class MenuView {
             pinModeBtn.className = 'pixel-button pin-mode-button';
             pinModeBtn.textContent = 'Toggle Pin Mode';
             
-            // Add event listener
+            // Add event listener - only dispatch the event, let controller handle state
             pinModeBtn.addEventListener('click', () => {
+                console.log('Pin mode button clicked');
                 // Dispatch toggle pin mode event
                 const togglePinModeEvent = new CustomEvent('togglePinMode');
                 document.dispatchEvent(togglePinModeEvent);
-                
-                // Update button appearance based on pin mode state
-                const isPinMode = pinModeBtn.classList.contains('active');
-                if (isPinMode) {
-                    pinModeBtn.classList.remove('active');
-                    pinModeBtn.textContent = 'Toggle Pin Mode';
-                } else {
-                    pinModeBtn.classList.add('active');
-                    pinModeBtn.textContent = 'Pin Mode Active';
-                }
+                // Don't modify button state here - GameController will do it
             });
             
             this.gameUIContainer.appendChild(pinModeBtn);

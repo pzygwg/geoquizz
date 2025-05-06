@@ -118,19 +118,11 @@ export default class GameController {
         document.addEventListener('togglePinMode', () => {
             console.log('togglePinMode event received');
             if (this.currentGameMode === 'findPlace') {
-                const isPinMode = this.canvasView.togglePinMode();
+                // Toggle pin mode in the canvas view
+                this.canvasView.togglePinMode();
                 
-                // Update button appearance
-                const pinModeBtn = document.getElementById('pinModeToggle');
-                if (pinModeBtn) {
-                    if (isPinMode) {
-                        pinModeBtn.classList.add('active');
-                        pinModeBtn.textContent = 'Pin Mode Active';
-                    } else {
-                        pinModeBtn.classList.remove('active');
-                        pinModeBtn.textContent = 'Toggle Pin Mode';
-                    }
-                }
+                // Update the button state to match
+                this._updatePinModeButtonState();
             }
         });
     }
@@ -560,9 +552,18 @@ export default class GameController {
         // Reset any existing pins
         this.canvasView.resetPins();
         
-        // Update pin mode button state if it exists
+        // Update pin mode button state to match the canvas view state
+        this._updatePinModeButtonState();
+    }
+    
+    /**
+     * Updates the pin mode button state to reflect the canvas view state
+     * @private 
+     */
+    _updatePinModeButtonState() {
         const pinModeBtn = document.getElementById('pinModeToggle');
         if (pinModeBtn) {
+            console.log("Updating pin mode button state:", this.canvasView.isPinMode);
             if (this.canvasView.isPinMode) {
                 pinModeBtn.classList.add('active');
                 pinModeBtn.textContent = 'Pin Mode Active';
@@ -582,12 +583,15 @@ export default class GameController {
     _handlePinPlaced(x, y) {
         console.log("_handlePinPlaced called with coordinates:", x, y);
         
+        // Get the actual dimensions of the pre-rendered map from the canvas dataset
+        // This is important for the coordinate calculations to work properly
+        const mapCanvas = this.canvasView.hitCanvas || this.canvasView.preRenderedMap;
+        const mapWidth = parseFloat(this.canvasView.canvas.dataset.mapWidth || (mapCanvas ? mapCanvas.width : 4000));
+        const mapHeight = parseFloat(this.canvasView.canvas.dataset.mapHeight || (mapCanvas ? mapCanvas.height : 2000));
+        
+        console.log("Map dimensions for coordinate calculation:", mapWidth, mapHeight);
+        
         // Convert canvas coordinates to latitude/longitude
-        const mapWidth = parseFloat(this.canvasView.canvas.dataset.mapWidth || 4000);
-        const mapHeight = parseFloat(this.canvasView.canvas.dataset.mapHeight || 2000);
-        
-        console.log("Map dimensions:", mapWidth, mapHeight);
-        
         const coordinates = this.placeFinderModel.canvasPointToCoordinates(x, y, mapWidth, mapHeight);
         console.log("Converted to lat/long:", coordinates.latitude, coordinates.longitude);
         
@@ -606,6 +610,7 @@ export default class GameController {
         
         // Get the current place data
         const currentPlace = this.placeFinderModel.currentPlace;
+        console.log("Actual place coordinates:", currentPlace.coordinates);
         
         // Show the actual location on the map
         const actualPoint = this.placeFinderModel.coordinatesToCanvasPoint(
@@ -615,7 +620,7 @@ export default class GameController {
             mapHeight
         );
         
-        console.log("Actual location point:", actualPoint.x, actualPoint.y);
+        console.log("Actual location point on canvas:", actualPoint.x, actualPoint.y);
         
         // Set the actual pin on the map
         this.canvasView.setActualPin(actualPoint.x, actualPoint.y);

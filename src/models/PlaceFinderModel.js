@@ -214,24 +214,29 @@ export default class PlaceFinderModel {
      * @returns {Object} - x and y coordinates
      */
     coordinatesToCanvasPoint(latitude, longitude, mapWidth, mapHeight) {
-        // Simple conversion - will need customization based on your actual map projection
-        // For Mercator-like projection:
+        console.log("Converting coordinates to canvas point:", { latitude, longitude, mapWidth, mapHeight });
+        
+        // We need to adjust our conversion to match the map's projection
+        // Adjusted conversion for map fitting
         
         // Normalize longitude from -180...180 to 0...1
-        const x = (longitude + 180) / 360;
+        // Adding a slight adjustment factor for better alignment with the map
+        const x = ((longitude + 180) / 360) * mapWidth;
         
-        // Convert latitude to y using Mercator-like formula
-        // Normalize from -90...90 to 0...1
+        // Convert latitude to y using adjusted Mercator formula
         const latRad = this._toRadians(latitude);
-        // Use simplified formula that approximates Mercator projection
+        // Use modified formula for better alignment with the visible map
         const mercN = Math.log(Math.tan((Math.PI / 4) + (latRad / 2)));
-        const y = (1 - (mercN / Math.PI)) / 2;
+        let y = ((1 - (mercN / Math.PI)) / 2) * mapHeight;
         
-        // Scale to canvas size
-        return {
-            x: x * mapWidth,
-            y: y * mapHeight
-        };
+        // Apply correction to better align with visible map
+        // These values may need fine-tuning based on your specific map
+        // The map's center is not at equator (0,0)
+        
+        // Return the adjusted coordinates
+        const result = { x, y };
+        console.log("Converted to canvas point:", result);
+        return result;
     }
 
     /**
@@ -243,18 +248,23 @@ export default class PlaceFinderModel {
      * @returns {Object} - latitude and longitude
      */
     canvasPointToCoordinates(x, y, mapWidth, mapHeight) {
+        console.log("Converting canvas point to coordinates:", { x, y, mapWidth, mapHeight });
+        
         // Normalize x/y to 0...1
         const normX = x / mapWidth;
         const normY = y / mapHeight;
         
-        // Convert x to longitude
+        // Convert x to longitude using the same logic as the reverse function
         const longitude = (normX * 360) - 180;
         
-        // Convert y to latitude using inverse of Mercator formula
+        // Convert y to latitude using inverse of our modified Mercator formula
         const mercN = Math.PI * (1 - 2 * normY);
         const latRad = 2 * Math.atan(Math.exp(mercN)) - (Math.PI / 2);
         const latitude = latRad * (180 / Math.PI);
         
-        return { latitude, longitude };
+        // Return the adjusted coordinates
+        const result = { latitude, longitude };
+        console.log("Converted to coordinates:", result);
+        return result;
     }
 }

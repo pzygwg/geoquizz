@@ -242,10 +242,16 @@ export default class CanvasView {
      * @private
      */
     _screenToMapCoords(screenX, screenY) {
-        // Inverse transformation: screen -> map
-        const mapX = (screenX - this.offsetX) / (this.baseScale * this.zoomLevel);
-        const mapY = (screenY - this.offsetY) / (this.baseScale * this.zoomLevel);
+        console.log("Converting screen coords to map coords:", { screenX, screenY });
         
+        // Get current scale and offset
+        const currentScale = this.baseScale * this.zoomLevel;
+        
+        // Inverse transformation: screen -> map
+        const mapX = (screenX - this.offsetX) / currentScale;
+        const mapY = (screenY - this.offsetY) / currentScale;
+        
+        console.log("Map coordinates:", { mapX, mapY });
         return { x: mapX, y: mapY };
     }
     
@@ -399,6 +405,10 @@ export default class CanvasView {
         mapCanvas.height = 2000;
         const mapCtx = mapCanvas.getContext('2d');
         
+        // Set these dimensions in the dataset for coordinate calculations
+        this.canvas.dataset.mapWidth = mapCanvas.width;
+        this.canvas.dataset.mapHeight = mapCanvas.height;
+        
         // Create a canvas for hit testing
         this.hitCanvas = document.createElement('canvas');
         this.hitCanvas.width = mapCanvas.width;
@@ -548,12 +558,17 @@ export default class CanvasView {
             this._drawPins(currentScale);
         }
         
-        // Store map position and scale for hit detection
+        // Store map position and scale for hit detection and coordinate conversion
         this.canvas.dataset.mapX = this.offsetX;
         this.canvas.dataset.mapY = this.offsetY;
         this.canvas.dataset.mapScale = currentScale;
-        this.canvas.dataset.mapWidth = this.preRenderedMap.width;
-        this.canvas.dataset.mapHeight = this.preRenderedMap.height;
+        
+        // Store the original map dimensions for proper coordinate calculations
+        // These should remain constant regardless of zoom
+        if (this.preRenderedMap) {
+            this.canvas.dataset.mapWidth = this.preRenderedMap.width;
+            this.canvas.dataset.mapHeight = this.preRenderedMap.height;
+        }
     }
     
     /**
@@ -677,17 +692,24 @@ export default class CanvasView {
      * @returns {boolean} - The new pin mode state
      */
     togglePinMode(enable) {
+        // Track previous state for debugging
+        const oldState = this.isPinMode;
+        
+        // Update pin mode state
         this.isPinMode = enable !== undefined ? enable : !this.isPinMode;
+        
+        console.log(`Toggling pin mode: ${oldState} -> ${this.isPinMode}`);
         
         // Update cursor and CSS class
         if (this.isPinMode) {
             this.canvas.style.cursor = 'crosshair';
             this.canvas.classList.add('pin-mode');
         } else {
-            this.canvas.style.cursor = 'grab';
+            this.canvas.style.cursor = this.isPlacingPin ? 'crosshair' : 'grab';
             this.canvas.classList.remove('pin-mode');
         }
         
+        // Return the new state
         return this.isPinMode;
     }
     
