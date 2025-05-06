@@ -163,11 +163,75 @@ export default class ImageView {
             <div class="rounds-summary">
                 ${roundResults}
             </div>
+            <div class="score-form">
+                <input type="text" id="ignInput" placeholder="Enter your name to save score" maxlength="15" />
+                <button id="saveScoreBtn" class="pixel-button small">Save Score</button>
+            </div>
+            <div id="saveConfirmation" class="save-confirmation hidden">Score saved!</div>
             <button id="newGameBtn" class="pixel-button">Play Again</button>
         `;
         
         // Add to container
         this.container.appendChild(resultsElement);
+        
+        // Store score data for easy access
+        this.currentScore = gameState.totalScore;
+        
+        const saveScore = () => {
+            const ignInput = document.getElementById('ignInput');
+            const ign = ignInput.value.trim();
+            
+            if (ign) {
+                // Dispatch event to save score with IGN
+                const event = new CustomEvent('saveScore', {
+                    detail: {
+                        ign: ign,
+                        score: this.currentScore
+                    }
+                });
+                document.dispatchEvent(event);
+                
+                // Show confirmation
+                ignInput.value = '';
+                const saveButton = document.getElementById('saveScoreBtn');
+                saveButton.textContent = 'Saved!';
+                saveButton.disabled = true;
+                
+                // Show confirmation message
+                const saveConfirmation = document.getElementById('saveConfirmation');
+                if (saveConfirmation) {
+                    saveConfirmation.classList.remove('hidden');
+                }
+                
+                // Reset button after a delay
+                setTimeout(() => {
+                    if (saveButton) {
+                        saveButton.textContent = 'Save Score';
+                        saveButton.disabled = false;
+                    }
+                    if (saveConfirmation) {
+                        saveConfirmation.classList.add('hidden');
+                    }
+                }, 2000);
+            } else {
+                // Highlight input if empty
+                ignInput.classList.add('error-input');
+                setTimeout(() => {
+                    ignInput.classList.remove('error-input');
+                }, 1000);
+            }
+        };
+        
+        // Add event listener to save score button
+        document.getElementById('saveScoreBtn').addEventListener('click', saveScore);
+        
+        // Add event listener for Enter key in input field
+        document.getElementById('ignInput').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveScore();
+            }
+        });
         
         // Add event listener to new game button
         document.getElementById('newGameBtn').addEventListener('click', () => {

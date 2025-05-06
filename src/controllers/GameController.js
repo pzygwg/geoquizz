@@ -125,6 +125,18 @@ export default class GameController {
                 this._updatePinModeButtonState();
             }
         });
+        
+        // Listen for score save event
+        document.addEventListener('saveScore', (event) => {
+            console.log('saveScore event received', event.detail);
+            this._saveScore(event.detail.ign, event.detail.score);
+        });
+        
+        // Listen for high scores display event
+        document.addEventListener('showHighScores', () => {
+            console.log('showHighScores event received');
+            this._showHighScores();
+        });
     }
     
     /**
@@ -722,6 +734,62 @@ SUGGESTED JSON FORMAT:
         
         // Update map view
         this.canvasView.renderMap(this.model.getAllCountriesForRendering());
+    }
+    
+    /**
+     * Saves the player's score with their IGN to localStorage
+     * @param {string} ign - In-game name of the player
+     * @param {number} score - Player's score
+     * @private
+     */
+    _saveScore(ign, score) {
+        if (!ign || !score) {
+            console.error('Invalid score data', { ign, score });
+            return;
+        }
+        
+        try {
+            // Get existing scores from localStorage or initialize empty array
+            let highScores = JSON.parse(localStorage.getItem('findPlaceHighScores') || '[]');
+            
+            // Add new score
+            highScores.push({
+                ign: ign,
+                score: score,
+                date: new Date().toISOString()
+            });
+            
+            // Sort by score (highest first)
+            highScores.sort((a, b) => b.score - a.score);
+            
+            // Limit to top 10 scores
+            highScores = highScores.slice(0, 10);
+            
+            // Save back to localStorage
+            localStorage.setItem('findPlaceHighScores', JSON.stringify(highScores));
+            
+            console.log('Score saved successfully', { ign, score });
+        } catch (error) {
+            console.error('Error saving score', error);
+        }
+    }
+    
+    /**
+     * Shows the high scores modal
+     * @private
+     */
+    _showHighScores() {
+        try {
+            // Get high scores from localStorage
+            const highScores = JSON.parse(localStorage.getItem('findPlaceHighScores') || '[]');
+            console.log('Retrieved high scores', highScores);
+            
+            // Show high scores in menu view
+            this.menuView.showHighScores(highScores);
+        } catch (error) {
+            console.error('Error showing high scores', error);
+            this.menuView.showHighScores([]);
+        }
     }
     
     /**

@@ -244,6 +244,77 @@ h1 {
     transition: opacity 0.2s ease;
 }
 
+/* High scores */
+.high-scores-container {
+    position: absolute;
+    width: 80%;
+    max-width: 500px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--menu-bg);
+    padding: 30px;
+    border: var(--pixel-border);
+    box-shadow: var(--box-shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 150;
+}
+
+.high-scores-container h2 {
+    font-size: 1.8rem;
+    color: var(--highlight-color);
+    text-shadow: 3px 3px 0px var(--text-shadow);
+    margin-bottom: 10px;
+}
+
+.high-scores-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.high-score-item {
+    display: grid;
+    grid-template-columns: 40px 1fr 100px 100px;
+    background-color: var(--secondary-bg);
+    padding: 10px;
+    border: 2px solid black;
+    font-size: 0.8rem;
+    align-items: center;
+}
+
+.high-score-rank {
+    font-weight: bold;
+    color: var(--highlight-color);
+}
+
+.high-score-ign {
+    font-weight: bold;
+}
+
+.high-score-score {
+    text-align: right;
+    color: var(--accent-color);
+}
+
+.high-score-date {
+    text-align: right;
+    font-size: 0.7rem;
+}
+
+.no-scores {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
 /* Region selection interface */
 .region-selection {
     position: absolute;
@@ -448,6 +519,43 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin-bottom: 15px;
+}
+
+.score-form {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+#ignInput {
+    font-family: var(--pixel-font);
+    font-size: 0.8rem;
+    padding: 8px;
+    border: var(--pixel-border);
+    background-color: var(--text-color);
+    color: var(--primary-bg);
+    flex-grow: 1;
+}
+
+#ignInput.error-input {
+    background-color: var(--error-color);
+    color: var(--text-color);
+    animation: shake 0.5s;
+}
+
+.save-confirmation {
+    background-color: var(--success-color);
+    color: var(--text-color);
+    padding: 8px 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: opacity 0.3s ease;
+    animation: fadeIn 0.5s;
 }
 
 .round-result {

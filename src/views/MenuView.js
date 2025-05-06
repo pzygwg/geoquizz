@@ -110,6 +110,27 @@ export default class MenuView {
         } else {
             console.error('Find the Place button not found in DOM');
         }
+        
+        // High Scores button click handler
+        const highScoresButton = document.getElementById('highScoresButton');
+        if (highScoresButton) {
+            console.log('Adding click listener to High Scores button');
+            highScoresButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                console.log('High Scores button clicked');
+                
+                // Play click sound if available
+                if (this.clickSound) {
+                    this.clickSound.currentTime = 0;
+                    this.clickSound.play().catch(e => console.log('Error playing sound:', e));
+                }
+                
+                // Trigger high scores display event
+                console.log('Dispatching showHighScores event');
+                const showHighScoresEvent = new CustomEvent('showHighScores');
+                document.dispatchEvent(showHighScoresEvent);
+            });
+        }
     }
     
     /**
@@ -168,6 +189,33 @@ export default class MenuView {
             }
         } else {
             console.log('"Find the Place" button already exists');
+        }
+        
+        // Add high scores button
+        if (!document.getElementById('highScoresButton')) {
+            // Create button
+            const button = document.createElement('button');
+            button.id = 'highScoresButton';
+            button.className = 'pixel-button small';
+            button.textContent = 'High Scores';
+            
+            // Add to menu container after the Find the Place button
+            const findPlaceButton = document.getElementById('findPlaceButton');
+            if (findPlaceButton && this.menuContainer) {
+                // Add some spacing
+                const spacer = document.createElement('div');
+                spacer.style.height = '15px';
+                this.menuContainer.insertBefore(spacer, findPlaceButton.nextSibling);
+                
+                // Add the button after the spacer
+                this.menuContainer.insertBefore(button, spacer.nextSibling);
+                
+                console.log('Created "High Scores" button');
+            } else {
+                console.error('Could not find Find the Place button or menu container to add "High Scores" button');
+            }
+        } else {
+            console.log('"High Scores" button already exists');
         }
     }
     
@@ -630,6 +678,52 @@ export default class MenuView {
         } else {
             document.body.classList.remove('high-contrast');
         }
+        
+        return this; // Allow chaining
+    }
+    
+    /**
+     * Shows the high scores
+     * @param {Array} scores - Array of high score objects
+     */
+    showHighScores(scores) {
+        // Create high scores container
+        const highScoresContainer = document.createElement('div');
+        highScoresContainer.className = 'high-scores-container';
+        
+        let scoresHTML = '';
+        
+        if (scores && scores.length > 0) {
+            scores.forEach((score, index) => {
+                const date = new Date(score.date).toLocaleDateString();
+                scoresHTML += `
+                    <div class="high-score-item">
+                        <div class="high-score-rank">${index + 1}</div>
+                        <div class="high-score-ign">${score.ign}</div>
+                        <div class="high-score-score">${score.score}</div>
+                        <div class="high-score-date">${date}</div>
+                    </div>
+                `;
+            });
+        } else {
+            scoresHTML = '<div class="no-scores">No scores yet. Play the game to set high scores!</div>';
+        }
+        
+        highScoresContainer.innerHTML = `
+            <h2>High Scores</h2>
+            <div class="high-scores-list">
+                ${scoresHTML}
+            </div>
+            <button id="closeHighScoresBtn" class="pixel-button">Close</button>
+        `;
+        
+        // Append to game container
+        document.getElementById('gameContainer').appendChild(highScoresContainer);
+        
+        // Add event listener to close button
+        document.getElementById('closeHighScoresBtn').addEventListener('click', () => {
+            highScoresContainer.remove();
+        });
         
         return this; // Allow chaining
     }
