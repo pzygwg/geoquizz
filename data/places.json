@@ -5,8 +5,8 @@
       "description": "Iconic marble mausoleum in Agra, India",
       "image": "images/tajmahal.webp",
       "coordinates": {
-        "latitude": 27.1751,
-        "longitude": 78.0421
+        "x": 1409.4367211555839,
+        "y": 331.91864937928386
       }
     },
     {
@@ -14,8 +14,8 @@
       "description": "Iconic wrought-iron lattice tower in Paris, France",
       "image": "images/eiffeltower.webp",
       "coordinates": {
-        "latitude": 48.8584,
-        "longitude": 2.2945
+        "x": 998.8691858068164,
+        "y": 192.883803801736
       }
     },
     {
@@ -23,8 +23,8 @@
       "description": "Ancient defensive wall spanning northern China",
       "image": "images/greatwall.webp",
       "coordinates": {
-        "latitude": 40.4319,
-        "longitude": 116.5704
+        "x": 1603.6901406603859,
+        "y": 235.38510344905674
       }
     },
     {
@@ -32,8 +32,8 @@
       "description": "15th-century Inca citadel in southern Peru",
       "image": "images/machupicchu.webp",
       "coordinates": {
-        "latitude": -13.1631,
-        "longitude": -72.5450
+        "x": 580.6128702951868,
+        "y": 586.606778596509
       }
     },
     {
@@ -41,8 +41,8 @@
       "description": "Performing arts center in Sydney, Australia",
       "image": "images/sydneyopera.webp",
       "coordinates": {
-        "latitude": -33.8568,
-        "longitude": 151.2153
+        "x": 1793.8673882330743,
+        "y": 719.5726032812624
       }
     }
   ]

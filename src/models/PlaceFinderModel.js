@@ -97,20 +97,24 @@ export default class PlaceFinderModel {
 
     /**
      * Record player's pin placement for current round
-     * @param {number} latitude - Latitude of player's guess
-     * @param {number} longitude - Longitude of player's guess
+     * @param {number} x - X coordinate of player's guess on the canvas
+     * @param {number} y - Y coordinate of player's guess on the canvas
      * @returns {Object} - Score and distance information
      */
-    recordPlayerGuess(latitude, longitude) {
+    recordPlayerGuess(x, y) {
         if (!this.currentPlace) {
             return null;
         }
         
-        // Calculate distance between player's guess and actual location
-        const distance = this._calculateDistance(
-            latitude, longitude,
-            this.currentPlace.coordinates.latitude, 
-            this.currentPlace.coordinates.longitude
+        // Get the actual coordinates from the current place
+        const actualX = this.currentPlace.coordinates.x;
+        const actualY = this.currentPlace.coordinates.y;
+        
+        // Calculate distance between player's guess and actual location on the canvas
+        const distance = this._calculateCanvasDistance(
+            x, y,
+            actualX, 
+            actualY
         );
         
         // Calculate score (0-1000 based on distance)
@@ -119,7 +123,7 @@ export default class PlaceFinderModel {
         // Store the pin and score
         const pin = {
             placeName: this.currentPlace.name,
-            playerCoordinates: { latitude, longitude },
+            playerCoordinates: { x, y },
             actualCoordinates: { ...this.currentPlace.coordinates },
             distance,
             score,
@@ -133,41 +137,31 @@ export default class PlaceFinderModel {
     }
 
     /**
-     * Calculate distance between two geographical points (Haversine formula)
-     * @param {number} lat1 - First point latitude
-     * @param {number} lon1 - First point longitude
-     * @param {number} lat2 - Second point latitude
-     * @param {number} lon2 - Second point longitude
-     * @returns {number} - Distance in kilometers
+     * Calculate distance between two points on the canvas (using Euclidean distance)
+     * @param {number} x1 - First point x-coordinate
+     * @param {number} y1 - First point y-coordinate
+     * @param {number} x2 - Second point x-coordinate
+     * @param {number} y2 - Second point y-coordinate
+     * @returns {number} - Distance in pixels (scaled to approximate km for game purposes)
      * @private
      */
-    _calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Earth's radius in km
-        const dLat = this._toRadians(lat2 - lat1);
-        const dLon = this._toRadians(lon2 - lon1);
+    _calculateCanvasDistance(x1, y1, x2, y2) {
+        // Calculate Euclidean distance
+        const distanceInPixels = Math.sqrt(
+            Math.pow(x2 - x1, 2) + 
+            Math.pow(y2 - y1, 2)
+        );
         
-        const a = 
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(this._toRadians(lat1)) * Math.cos(this._toRadians(lat2)) * 
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        // Scale the distance to approximate kilometers for scoring purposes
+        // This scaling factor can be adjusted to make the game more or less challenging
+        const scalingFactor = 2.5; // pixels to km conversion factor
         
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
-    /**
-     * Convert degrees to radians
-     * @param {number} degrees - Angle in degrees
-     * @returns {number} - Angle in radians
-     * @private
-     */
-    _toRadians(degrees) {
-        return degrees * (Math.PI / 180);
+        return distanceInPixels * scalingFactor;
     }
 
     /**
      * Calculate score based on distance
-     * @param {number} distance - Distance in kilometers
+     * @param {number} distance - Distance in pixels (scaled to km)
      * @returns {number} - Score (0-1000)
      * @private
      */
@@ -203,68 +197,5 @@ export default class PlaceFinderModel {
         this.currentRound = 0;
         this.playerPins = [];
         this.scores = [];
-    }
-
-    /**
-     * Convert latitude/longitude to x/y coordinates on the map canvas
-     * @param {number} latitude - Latitude
-     * @param {number} longitude - Longitude
-     * @param {number} mapWidth - Width of the map canvas
-     * @param {number} mapHeight - Height of the map canvas
-     * @returns {Object} - x and y coordinates
-     */
-    coordinatesToCanvasPoint(latitude, longitude, mapWidth, mapHeight) {
-        console.log("Converting coordinates to canvas point:", { latitude, longitude, mapWidth, mapHeight });
-        
-        // We need to adjust our conversion to match the map's projection
-        // Adjusted conversion for map fitting
-        
-        // Normalize longitude from -180...180 to 0...1
-        // Adding a slight adjustment factor for better alignment with the map
-        const x = ((longitude + 180) / 360) * mapWidth;
-        
-        // Convert latitude to y using adjusted Mercator formula
-        const latRad = this._toRadians(latitude);
-        // Use modified formula for better alignment with the visible map
-        const mercN = Math.log(Math.tan((Math.PI / 4) + (latRad / 2)));
-        let y = ((1 - (mercN / Math.PI)) / 2) * mapHeight;
-        
-        // Apply correction to better align with visible map
-        // These values may need fine-tuning based on your specific map
-        // The map's center is not at equator (0,0)
-        
-        // Return the adjusted coordinates
-        const result = { x, y };
-        console.log("Converted to canvas point:", result);
-        return result;
-    }
-
-    /**
-     * Convert canvas x/y coordinates to latitude/longitude
-     * @param {number} x - X coordinate on canvas
-     * @param {number} y - Y coordinate on canvas
-     * @param {number} mapWidth - Width of the map canvas
-     * @param {number} mapHeight - Height of the map canvas
-     * @returns {Object} - latitude and longitude
-     */
-    canvasPointToCoordinates(x, y, mapWidth, mapHeight) {
-        console.log("Converting canvas point to coordinates:", { x, y, mapWidth, mapHeight });
-        
-        // Normalize x/y to 0...1
-        const normX = x / mapWidth;
-        const normY = y / mapHeight;
-        
-        // Convert x to longitude using the same logic as the reverse function
-        const longitude = (normX * 360) - 180;
-        
-        // Convert y to latitude using inverse of our modified Mercator formula
-        const mercN = Math.PI * (1 - 2 * normY);
-        const latRad = 2 * Math.atan(Math.exp(mercN)) - (Math.PI / 2);
-        const latitude = latRad * (180 / Math.PI);
-        
-        // Return the adjusted coordinates
-        const result = { latitude, longitude };
-        console.log("Converted to coordinates:", result);
-        return result;
     }
 }

@@ -583,23 +583,27 @@ export default class GameController {
     _handlePinPlaced(x, y) {
         console.log("_handlePinPlaced called with coordinates:", x, y);
         
-        // Get the actual dimensions of the pre-rendered map from the canvas dataset
-        // This is important for the coordinate calculations to work properly
+        // Get the actual dimensions of the pre-rendered map
         const mapCanvas = this.canvasView.hitCanvas || this.canvasView.preRenderedMap;
         const mapWidth = parseFloat(this.canvasView.canvas.dataset.mapWidth || (mapCanvas ? mapCanvas.width : 4000));
         const mapHeight = parseFloat(this.canvasView.canvas.dataset.mapHeight || (mapCanvas ? mapCanvas.height : 2000));
         
-        console.log("Map dimensions for coordinate calculation:", mapWidth, mapHeight);
+        // Log detailed coordinates for debugging and easy copy-paste
+        console.log(`
+=========== MAP POSITION DEBUG ===========
+CLICK COORDINATES:
+  Canvas X,Y: ${x}, ${y}
+  
+SUGGESTED JSON FORMAT:
+{
+  "x": ${Math.round(x)},
+  "y": ${Math.round(y)}
+}
+=========================================
+        `);
         
-        // Convert canvas coordinates to latitude/longitude
-        const coordinates = this.placeFinderModel.canvasPointToCoordinates(x, y, mapWidth, mapHeight);
-        console.log("Converted to lat/long:", coordinates.latitude, coordinates.longitude);
-        
-        // Record the guess and get results
-        const result = this.placeFinderModel.recordPlayerGuess(
-            coordinates.latitude, 
-            coordinates.longitude
-        );
+        // Record the guess and get results using direct canvas coordinates
+        const result = this.placeFinderModel.recordPlayerGuess(x, y);
         
         if (!result) {
             console.error("Failed to record guess");
@@ -612,13 +616,11 @@ export default class GameController {
         const currentPlace = this.placeFinderModel.currentPlace;
         console.log("Actual place coordinates:", currentPlace.coordinates);
         
-        // Show the actual location on the map
-        const actualPoint = this.placeFinderModel.coordinatesToCanvasPoint(
-            currentPlace.coordinates.latitude,
-            currentPlace.coordinates.longitude,
-            mapWidth,
-            mapHeight
-        );
+        // Use actual coordinates directly from the place data
+        const actualPoint = {
+            x: currentPlace.coordinates.x,
+            y: currentPlace.coordinates.y
+        };
         
         console.log("Actual location point on canvas:", actualPoint.x, actualPoint.y);
         
